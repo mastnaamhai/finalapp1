@@ -426,7 +426,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                                     <span className="font-bold" style={{ fontWeight: '700' }}>E-Mail:- {companyInfo?.email || 'N/A'}</span>
                                     <span className="font-bold" style={{ fontWeight: '700' }}>Web :- {companyInfo?.website || 'N/A'}</span>
                                 </div>
-                                <p className="font-bold text-xl mt-1" style={{ fontWeight: '700' }}>GSTIN: {companyInfo?.gstin || 'N/A'}</p>
+                                <p className="font-bold text-xl mt-1 text-red-600" style={{ fontWeight: '700', color: '#DC2626' }}>GSTIN: {companyInfo?.gstin || 'N/A'}</p>
                             </div>
                         </div>
                     </div>
