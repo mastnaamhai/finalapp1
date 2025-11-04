@@ -147,7 +147,7 @@ export const LorryReceiptCopyPreview: React.FC<LorryReceiptCopyPreviewProps> = (
 
       // Generate PDF
       await generatePdf(`temp-lr-container-${copyId}`, {
-        fileName: `LR-${lorryReceipt.id}-${copyType.label.replace(/\s+/g, '-')}`,
+        fileName: `LR-${lorryReceipt.lrNumber || lorryReceipt._id}.pdf`,
         orientation: 'portrait',
         format: 'a4',
         quality: 'high'
@@ -275,7 +275,7 @@ export const LorryReceiptCopyPreview: React.FC<LorryReceiptCopyPreviewProps> = (
       // Generate PDF
       await printToPdfFile(`temp-pdf-container-${copyId}`, {
         orientation: 'portrait',
-        fileName: `LR-${lorryReceipt.id}-${copyType.label.replace(/\s+/g, '-')}.pdf`
+        fileName: `LR-${lorryReceipt.lrNumber || lorryReceipt._id}-${copyType.label.replace(/\s+/g, '-')}.pdf`
       });
 
       // Cleanup
@@ -326,7 +326,7 @@ export const LorryReceiptCopyPreview: React.FC<LorryReceiptCopyPreviewProps> = (
 
       // Generate multi-page PDF
       await generateMultiPagePdf('temp-all-copies-container', {
-        fileName: `LR-${lorryReceipt.id}-All-Copies`,
+        fileName: `LR-${lorryReceipt.lrNumber || lorryReceipt._id}-All-Copies`,
         orientation: 'portrait',
         format: 'a4',
         quality: 'high'
@@ -460,7 +460,7 @@ export const LorryReceiptCopyPreview: React.FC<LorryReceiptCopyPreviewProps> = (
       <div className="bg-white border-b border-gray-200 p-6 flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">LR Copies Preview</h2>
-          <p className="text-sm text-gray-600">LR #{lorryReceipt.id} - {lorryReceipt.date}</p>
+          <p className="text-sm text-gray-600">LR #{lorryReceipt.lrNumber || lorryReceipt._id} - {lorryReceipt.date}</p>
         </div>
         <div className="flex space-x-3">
           <Button

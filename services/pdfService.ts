@@ -56,7 +56,15 @@ const generateFileName = (baseName: string | number, documentType: string, docum
   const timestamp = date || new Date().toISOString().split('T')[0];
   const cleanBaseName = String(baseName).replace(/[^a-zA-Z0-9_-]/g, '_');
   const cleanDocNumber = documentNumber ? String(documentNumber).replace(/[^a-zA-Z0-9_-]/g, '_') : '';
-  
+
+  // Custom filename formats for specific document types
+  if (documentType === 'invoice') {
+    return `INV-${cleanDocNumber}.pdf`;
+  } else if (documentType === 'lorry-receipt') {
+    return `LR-${cleanDocNumber}.pdf`;
+  }
+
+  // Default format for other document types
   return `${documentType}_${cleanDocNumber ? cleanDocNumber + '_' : ''}${timestamp}.pdf`;
 };
 
@@ -176,7 +184,7 @@ export const generatePdf = async (elementId: string, options: PDFOptions): Promi
       x: 0,
       y: 0,
       // Capture overflow content including absolutely positioned elements
-      ignoreElements: (element) => {
+      ignoreElements: (element: Element) => {
         // Don't ignore any elements - capture everything
         return false;
       },
@@ -439,8 +447,11 @@ export const generatePdf = async (elementId: string, options: PDFOptions): Promi
       const y = margins.top;
 
       pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight, undefined, qualitySettings.compression);
-      
-      const fileName = generateFileName(options.fileName, 'Document');
+
+      // Use custom filename if already formatted, otherwise generate default
+      const fileName = options.fileName && options.fileName.endsWith('.pdf')
+        ? options.fileName
+        : generateFileName(options.fileName, 'Document');
       pdf.save(fileName);
       return;
     }
@@ -486,7 +497,9 @@ export const generatePdf = async (elementId: string, options: PDFOptions): Promi
     pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight, undefined, qualitySettings.compression);
     
     // Generate descriptive filename
-    const fileName = generateFileName(options.fileName, 'Document');
+    const fileName = options.fileName && options.fileName.endsWith('.pdf')
+      ? options.fileName
+      : generateFileName(options.fileName, 'Document');
     pdf.save(fileName);
   } catch (error) {
     console.error('Error generating PDF:', error);
@@ -1195,7 +1208,7 @@ export const printToPdfFile = async (elementId: string, options: PrintOptions & 
       x: 0,
       y: 0,
       // Capture overflow content including absolutely positioned elements
-      ignoreElements: (element) => {
+      ignoreElements: (element: Element) => {
         // Don't ignore any elements - capture everything
         return false;
       },
