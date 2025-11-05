@@ -4,10 +4,10 @@
 // Custom: Set to desired width (e.g., 500mm, 550mm, 600mm)
 
 /**
- * Invoice width - set to A4 landscape width for proper auto-fitting
- * Default: 420mm (A4 landscape width)
+ * Invoice width - set to full page width for maximum space utilization
+ * Default: 594mm (A3 landscape width for edge-to-edge coverage)
  */
-export const INVOICE_WIDTH = '420mm';
+export const INVOICE_WIDTH = '594mm';
 
 /**
  * Invoice height - standard landscape height
@@ -25,4 +25,3 @@ export const getInvoiceWidthPx = (): number => {
   const widthMm = parseFloat(INVOICE_WIDTH.replace('mm', ''));
   return Math.round(widthMm * 3.779527559);
 };
-

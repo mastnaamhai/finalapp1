@@ -181,20 +181,20 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                     text-align: center !important;
                 }
                 
-                /* Column width optimization for landscape - better space utilization */
+                /* Column width optimization for landscape - better space utilization with full width */
                 .invoice-table th:nth-child(1), .invoice-table td:nth-child(1) { width: 6%; } /* LR Number */
                 .invoice-table th:nth-child(2), .invoice-table td:nth-child(2) { width: 6%; } /* LR Date */
-                .invoice-table th:nth-child(3), .invoice-table td:nth-child(3) { width: 8%; } /* Destination */
+                .invoice-table th:nth-child(3), .invoice-table td:nth-child(3) { width: 9%; } /* Destination */
                 .invoice-table th:nth-child(4), .invoice-table td:nth-child(4) { width: 6%; } /* Reporting Date */
                 .invoice-table th:nth-child(5), .invoice-table td:nth-child(5) { width: 6%; } /* Delivery Date */
-                .invoice-table th:nth-child(6), .invoice-table td:nth-child(6) { width: 7%; } /* Invoice Number */
-                .invoice-table th:nth-child(7), .invoice-table td:nth-child(7) { width: 12%; } /* Consigner Name */
+                .invoice-table th:nth-child(6), .invoice-table td:nth-child(6) { width: 8%; } /* Invoice Number */
+                .invoice-table th:nth-child(7), .invoice-table td:nth-child(7) { width: 15%; } /* Consigner Name */
                 .invoice-table th:nth-child(8), .invoice-table td:nth-child(8) { width: 5%; } /* Packages */
-                .invoice-table th:nth-child(9), .invoice-table td:nth-child(9) { width: 6%; } /* Weight */
-                .invoice-table th:nth-child(10), .invoice-table td:nth-child(10) { width: 8%; } /* Material */
-                .invoice-table th:nth-child(11), .invoice-table td:nth-child(11) { width: 8%; } /* Total Charges */
+                .invoice-table th:nth-child(9), .invoice-table td:nth-child(9) { width: 7%; } /* Weight */
+                .invoice-table th:nth-child(10), .invoice-table td:nth-child(10) { width: 10%; } /* Material */
+                .invoice-table th:nth-child(11), .invoice-table td:nth-child(11) { width: 9%; } /* Total Charges */
                 /* Dynamic GST columns - flexible width based on available columns */
-                .invoice-table th:last-child, .invoice-table td:last-child { width: 7%; } /* Total - always last */
+                .invoice-table th:last-child, .invoice-table td:last-child { width: 8%; } /* Total - always last */
                 
                 /* GST columns styling */
                 .gst-column {
