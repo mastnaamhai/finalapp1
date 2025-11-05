@@ -182,25 +182,46 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                 }
                 
                 /* Column width optimization for landscape - better space utilization with full width */
-                .invoice-table th:nth-child(1), .invoice-table td:nth-child(1) { width: 6%; } /* LR Number */
-                .invoice-table th:nth-child(2), .invoice-table td:nth-child(2) { width: 6%; } /* LR Date */
-                .invoice-table th:nth-child(3), .invoice-table td:nth-child(3) { width: 9%; } /* Destination */
-                .invoice-table th:nth-child(4), .invoice-table td:nth-child(4) { width: 6%; } /* Reporting Date */
-                .invoice-table th:nth-child(5), .invoice-table td:nth-child(5) { width: 6%; } /* Delivery Date */
-                .invoice-table th:nth-child(6), .invoice-table td:nth-child(6) { width: 8%; } /* Invoice Number */
-                .invoice-table th:nth-child(7), .invoice-table td:nth-child(7) { width: 15%; } /* Consigner Name */
-                .invoice-table th:nth-child(8), .invoice-table td:nth-child(8) { width: 5%; } /* Packages */
-                .invoice-table th:nth-child(9), .invoice-table td:nth-child(9) { width: 7%; } /* Weight */
-                .invoice-table th:nth-child(10), .invoice-table td:nth-child(10) { width: 10%; } /* Material */
-                .invoice-table th:nth-child(11), .invoice-table td:nth-child(11) { width: 9%; } /* Total Charges */
+                .invoice-table th.lr-number-column, .invoice-table td.lr-number-column { width: 5%; } /* LR Number */
+                .invoice-table th.lr-date-column, .invoice-table td.lr-date-column { width: 5%; } /* LR Date */
+                .invoice-table th.destination-column, .invoice-table td.destination-column { width: 8%; } /* Destination */
+                .invoice-table th.reporting-date-column, .invoice-table td.reporting-date-column { width: 5%; } /* Reporting Date */
+                .invoice-table th.delivery-date-column, .invoice-table td.delivery-date-column { width: 5%; } /* Delivery Date */
+                .invoice-table th.invoice-number-column, .invoice-table td.invoice-number-column { width: 7%; } /* Invoice Number */
+                .invoice-table th.consigner-name-column, .invoice-table td.consigner-name-column { width: 18%; } /* Consigner Name */
+                .invoice-table th.packages-column, .invoice-table td.packages-column { width: 4%; } /* Packages */
+                .invoice-table th.weight-column, .invoice-table td.weight-column { width: 6%; } /* Weight */
+                .invoice-table th.material-column, .invoice-table td.material-column { width: 9%; } /* Material */
+                .invoice-table th.bilty-charges-column, .invoice-table td.bilty-charges-column { width: 8%; } /* Bilty Charges */
+                .invoice-table th.total-charges-column, .invoice-table td.total-charges-column { width: 8%; } /* Total Charges */
                 /* Dynamic GST columns - flexible width based on available columns */
-                .invoice-table th:last-child, .invoice-table td:last-child { width: 8%; } /* Total - always last */
+                .invoice-table th.total-column, .invoice-table td.total-column { width: 7%; } /* Total - always last */
                 
                 /* GST columns styling */
                 .gst-column {
                     background-color: #f0f9ff;
                     width: auto;
                     min-width: 5%;
+                }
+
+                /* Consigner Name column - prevent text wrapping */
+                .invoice-table th.consigner-name-column, .invoice-table td.consigner-name-column {
+                    white-space: nowrap !important;
+                    overflow: hidden !important;
+                    text-overflow: ellipsis !important;
+                    word-break: normal !important;
+                    word-wrap: normal !important;
+                    overflow-wrap: normal !important;
+                }
+
+                /* Reduce padding for narrow numeric columns */
+                .invoice-table th:nth-child(1), .invoice-table td:nth-child(1), /* LR Number */
+                .invoice-table th:nth-child(2), .invoice-table td:nth-child(2), /* LR Date */
+                .invoice-table th:nth-child(4), .invoice-table td:nth-child(4), /* Reporting Date */
+                .invoice-table th:nth-child(5), .invoice-table td:nth-child(5), /* Delivery Date */
+                .invoice-table th:nth-child(8), .invoice-table td:nth-child(8), /* Packages */
+                .invoice-table th:nth-child(9), .invoice-table td:nth-child(9) { /* Weight */
+                    padding: ${Math.max(6, 8 * tableScale)}px ${Math.max(2, 4 * tableScale)}px !important;
                 }
                 
                 /* Charges table column widths */
@@ -401,7 +422,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                     {/* Company Name/Details Centered in Header */}
                     <div className="flex items-center justify-center mb-3" style={{ position: 'relative', width: '100%' }}>
                         {/* Logo - Optional, positioned on left */}
-                        <div className="absolute flex-shrink-0" style={{ left: '100px', width: '250px', height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+                        <div className="absolute flex-shrink-0" style={{ left: '200px', width: '250px', height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
                             <Logo 
                                 size="3xl" 
                                 showText={false}
@@ -410,7 +431,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                             />
                         </div>
                         {/* Company Information - Centered in Header */}
-                        <div className="text-center" style={{ width: '100%', margin: '0 auto', paddingLeft: '200px', paddingRight: '20px', boxSizing: 'border-box', overflow: 'visible' }}>
+                        <div className="text-center" style={{ width: '100%', margin: '0 auto', paddingLeft: '120px', paddingRight: '20px', boxSizing: 'border-box', overflow: 'visible' }}>
                             <h1 className="font-bold text-red-600 uppercase leading-tight mb-6" style={{ fontSize: '58px', letterSpacing: '0.5px', color: '#DC2626', fontWeight: '900', marginBottom: '24px', whiteSpace: 'nowrap', overflow: 'visible', textOverflow: 'clip', width: '100%', display: 'block', lineHeight: '1.1' }}>
                                 {companyInfo?.name || 'ALL INDIA LOGISTICS CHENNAI'}
                             </h1>
@@ -465,25 +486,25 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                         <table className={`w-full border-collapse ${hideTableBorders ? '' : 'border border-gray-400'} invoice-table`}>
                             <thead className="bg-gray-100">
                                 <tr className={hideTableBorders ? '' : 'border-b-2 border-black'}>
-                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>LR Number</th>
-                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>LR Date</th>
-                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Destination</th>
+                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center lr-number-column`}>LR Number</th>
+                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center lr-date-column`}>LR Date</th>
+                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center destination-column`}>Destination</th>
                                     {hasReportingDate && (
-                                        <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Reporting Date</th>
+                                        <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center reporting-date-column`}>Reporting Date</th>
                                     )}
                                     {hasDeliveryDate && (
-                                        <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Delivery Date</th>
+                                        <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center delivery-date-column`}>Delivery Date</th>
                                     )}
-                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Invoice Number</th>
-                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Consigner Name</th>
-                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center font-semibold`}>Packages</th>
-                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center font-semibold`}>Weight (kg)</th>
-                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center font-semibold`}>Material</th>
+                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center invoice-number-column`}>Invoice Number</th>
+                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center consigner-name-column`}>Consigner Name</th>
+                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center font-semibold packages-column`}>Packages</th>
+                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center font-semibold weight-column`}>Weight (kg)</th>
+                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center font-semibold material-column`}>Material</th>
                                     {!(invoice.isRcm === true) && (
-                                        <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center font-semibold`}>Bilty Charges (₹)</th>
+                                        <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center font-semibold bilty-charges-column`}>Bilty Charges (₹)</th>
                                     )}
                                     {!(invoice.isRcm === true) && (
-                                        <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center font-semibold`}>Total Charges (₹)</th>
+                                        <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center font-semibold total-charges-column`}>Total Charges (₹)</th>
                                     )}
 
                                     {invoice.gstType === GstType.CGST_SGST && (invoice.sgstAmount || 0) > 0 && (
@@ -495,7 +516,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                                     {invoice.gstType === GstType.IGST && (invoice.igstAmount || 0) > 0 && (
                                         <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center font-semibold gst-column`}>IGST (₹)</th>
                                     )}
-                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center font-semibold`}>Total (₹)</th>
+                                    <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center font-semibold total-column`}>Total (₹)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -543,29 +564,29 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                                     
                                     return (
                                         <tr key={lr._id} className={hideTableBorders ? 'hover:bg-gray-50' : 'border-b border-gray-300 hover:bg-gray-50'}>
-                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`} title={String(lr.lrNumber || '')}>{lr.lrNumber || ''}</td>
-                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{formatDate(lr.date)}</td>
-                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`} title={lr.to || ''}>{lr.to || ''}</td>
+                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm lr-number-column`} title={String(lr.lrNumber || '')}>{lr.lrNumber || ''}</td>
+                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm lr-date-column`}>{formatDate(lr.date)}</td>
+                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm destination-column`} title={lr.to || ''}>{lr.to || ''}</td>
                                             {hasReportingDate && (
-                                                <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{lr.reportingDate ? formatDate(lr.reportingDate) : '-'}</td>
+                                                <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm reporting-date-column`}>{lr.reportingDate ? formatDate(lr.reportingDate) : '-'}</td>
                                             )}
                                             {hasDeliveryDate && (
-                                                <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{lr.deliveryDate ? formatDate(lr.deliveryDate) : '-'}</td>
+                                                <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm delivery-date-column`}>{lr.deliveryDate ? formatDate(lr.deliveryDate) : '-'}</td>
                                             )}
-                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`} title={lr.invoiceNo || ''}>{lr.invoiceNo || '-'}</td>
-                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`} title={displayParty?.tradeName || displayParty?.name || ''}>
+                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm invoice-number-column`} title={lr.invoiceNo || ''}>{lr.invoiceNo || '-'}</td>
+                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm consigner-name-column`} title={displayParty?.tradeName || displayParty?.name || ''}>
                                                 {displayParty?.tradeName || displayParty?.name || '-'}
                                             </td>
-                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{packs}</td>
-                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{weight.toLocaleString('en-IN')}</td>
-                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`} title={material}>{material}</td>
+                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm packages-column`}>{packs}</td>
+                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm weight-column`}>{weight.toLocaleString('en-IN')}</td>
+                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm material-column`} title={material}>{material}</td>
                                             {!(invoice.isRcm === true) && (
-                                                <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>
+                                                <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm bilty-charges-column`}>
                                                     {bCh.toLocaleString('en-IN')}
                                                 </td>
                                             )}
                                             {!(invoice.isRcm === true) && (
-                                                <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>
+                                                <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm total-charges-column`}>
                                                     {totalCharges.toLocaleString('en-IN')}
                                                 </td>
                                             )}
@@ -579,7 +600,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                                             {invoice.gstType === GstType.IGST && (invoice.igstAmount || 0) > 0 && (
                                                 <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm gst-column`}>{lrIgstAmount.toLocaleString('en-IN')}</td>
                                             )}
-                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm font-semibold`}>{lrTotal.toLocaleString('en-IN')}</td>
+                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm font-semibold total-column`}>{lrTotal.toLocaleString('en-IN')}</td>
                                         </tr>
                                     )
                                 })}
