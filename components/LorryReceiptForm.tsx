@@ -111,7 +111,7 @@ export const LorryReceiptForm: React.FC<LorryReceiptFormProps> = ({
         'charges.freight': fieldRules.freightCharges,
         'charges.aoc': { min: 0, message: 'AOC cannot be negative' },
         'charges.hamali': { min: 0, message: 'Hamali cannot be negative' },
-        'charges.bCh': { min: 0, message: 'B.Ch cannot be negative' },
+        'charges.bCh': { min: 0, message: 'Bilty Charges cannot be negative' },
         'charges.trCh': { min: 0, message: 'Tr.Ch cannot be negative' },
         'charges.detentionCh': { min: 0, message: 'Detention charges cannot be negative' },
         gstPayableBy: { required: true, message: 'GST Payable By is required' },
@@ -1238,7 +1238,7 @@ export const LorryReceiptForm: React.FC<LorryReceiptFormProps> = ({
                                 </div>
                                 <div className="space-y-2">
                                     <label className="block text-sm font-medium text-gray-700">
-                                        B.Ch (Booking Charges) (₹)
+                                        Bilty Charges (₹)
                                     </label>
                                         <Input 
                                             name="charges.bCh" 
