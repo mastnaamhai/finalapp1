@@ -1,19 +1,19 @@
 // Invoice dimensions configuration
-// A4 landscape: 420mm × 297mm
-// A3 landscape: 594mm × 420mm
+// A4 landscape: 297mm × 210mm
+// A3 landscape: 420mm × 297mm
 // Custom: Set to desired width (e.g., 500mm, 550mm, 600mm)
 
 /**
- * Invoice width - set to full page width for maximum space utilization
- * Default: 594mm (A3 landscape width for edge-to-edge coverage)
+ * Invoice width - expanded canvas for on-screen layout; printing will scale to A4
+ * 500mm provides a wider working area while print styles fit to A4
  */
-export const INVOICE_WIDTH = '594mm';
+export const INVOICE_WIDTH = '500mm';
 
 /**
- * Invoice height - standard landscape height
- * Default: 297mm (standard A4 landscape height)
+ * Invoice height - set to full A4 page height in landscape
+ * 210mm corresponds to A4 landscape height
  */
-export const INVOICE_HEIGHT = '297mm';
+export const INVOICE_HEIGHT = '210mm';
 
 /**
  * Calculate approximate pixel width at 96 DPI

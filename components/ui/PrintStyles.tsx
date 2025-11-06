@@ -1,4 +1,5 @@
 import React from 'react';
+import { INVOICE_WIDTH, INVOICE_HEIGHT } from '../../constants/invoiceDimensions';
 
 interface PrintStylesProps {
   documentType?: 'invoice' | 'lorry-receipt' | 'truck-hiring-note' | 'ledger';
@@ -97,7 +98,7 @@ export const PrintStyles: React.FC<PrintStylesProps> = ({
         
         @page {
           size: ${orientation === 'landscape' ? 'A4 landscape' : 'A4 portrait'};
-          margin: ${orientation === 'landscape' && documentType === 'invoice' ? '0' : (documentType === 'lorry-receipt' ? '0.1in' : '0.5in')};
+          margin: ${documentType === 'invoice' ? '0' : (documentType === 'lorry-receipt' ? '0.1in' : '0.5in')};
           orphans: 3;
           widows: 3;
         }
@@ -222,7 +223,7 @@ export const PrintStyles: React.FC<PrintStylesProps> = ({
         ${documentType === 'invoice' ? `
           #invoice-pdf {
             width: 100% !important;
-            min-height: 100vh !important;
+            height: 100% !important;
             max-width: 100% !important;
             transform: none !important;
             scale: none !important;
@@ -238,7 +239,7 @@ export const PrintStyles: React.FC<PrintStylesProps> = ({
             box-sizing: border-box !important;
           }
           
-          /* Ensure invoice fits landscape page properly - edge to edge */
+          /* Ensure invoice fits custom page size edge to edge */
           @page {
             size: A4 landscape !important;
             margin: 0 !important;

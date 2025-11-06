@@ -62,12 +62,11 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
     
     const tableScale = getTableScale();
     
-    // Check if any LR has reporting/delivery dates for conditional column display
-    const hasReportingDate = (invoice.lorryReceipts || []).some(lr => lr.reportingDate);
+    // Check if any LR has delivery dates for conditional column display
     const hasDeliveryDate = (invoice.lorryReceipts || []).some(lr => lr.deliveryDate);
 
     return (
-        <div id="invoice-pdf" className="bg-white p-4 text-base font-sans" style={{ width: INVOICE_WIDTH, minHeight: INVOICE_HEIGHT, fontFamily: 'sans-serif', lineHeight: '1.3', margin: '0 auto', overflow: 'visible', boxSizing: 'border-box' }}>
+            <div id="invoice-pdf" className="bg-white text-base font-sans" style={{ width: INVOICE_WIDTH, height: INVOICE_HEIGHT, padding: 0, fontFamily: 'sans-serif', lineHeight: '1.3', margin: 0, overflow: 'visible', boxSizing: 'border-box' }}>
             <style>{`
                 /* Apply landscape styles to both screen and print */
                 #invoice-pdf {
@@ -181,21 +180,18 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                     text-align: center !important;
                 }
                 
-                /* Column width optimization for landscape - better space utilization with full width */
-                .invoice-table th.lr-number-column, .invoice-table td.lr-number-column { width: 5%; } /* LR Number */
-                .invoice-table th.lr-date-column, .invoice-table td.lr-date-column { width: 5%; } /* LR Date */
-                .invoice-table th.destination-column, .invoice-table td.destination-column { width: 8%; } /* Destination */
-                .invoice-table th.reporting-date-column, .invoice-table td.reporting-date-column { width: 5%; } /* Reporting Date */
-                .invoice-table th.delivery-date-column, .invoice-table td.delivery-date-column { width: 5%; } /* Delivery Date */
-                .invoice-table th.invoice-number-column, .invoice-table td.invoice-number-column { width: 7%; } /* Invoice Number */
-                .invoice-table th.consigner-name-column, .invoice-table td.consigner-name-column { width: 18%; } /* Consigner Name */
-                .invoice-table th.packages-column, .invoice-table td.packages-column { width: 4%; } /* Packages */
-                .invoice-table th.weight-column, .invoice-table td.weight-column { width: 6%; } /* Weight */
-                .invoice-table th.material-column, .invoice-table td.material-column { width: 9%; } /* Material */
-                .invoice-table th.bilty-charges-column, .invoice-table td.bilty-charges-column { width: 8%; } /* Bilty Charges */
-                .invoice-table th.total-charges-column, .invoice-table td.total-charges-column { width: 8%; } /* Total Charges */
-                /* Dynamic GST columns - flexible width based on available columns */
-                .invoice-table th.total-column, .invoice-table td.total-column { width: 7%; } /* Total - always last */
+                /* Let the table auto-distribute widths to use full available space */
+
+                /* Prioritize space for consigner/consignee names by shrinking auxiliary columns */
+                .invoice-table th.lr-number-column, .invoice-table td.lr-number-column { width: 6%; }
+                .invoice-table th.lr-date-column, .invoice-table td.lr-date-column { width: 7%; }
+                .invoice-table th.destination-column, .invoice-table td.destination-column { width: 8%; }
+                .invoice-table th.delivery-date-column, .invoice-table td.delivery-date-column { width: 7%; }
+                .invoice-table th.invoice-number-column, .invoice-table td.invoice-number-column { width: 10%; }
+                .invoice-table th.packages-column, .invoice-table td.packages-column { width: 5%; }
+                .invoice-table th.weight-column, .invoice-table td.weight-column { width: 7%; }
+                .invoice-table th.material-column, .invoice-table td.material-column { width: 8%; }
+                .invoice-table th.total-column, .invoice-table td.total-column { width: 8%; }
                 
                 /* GST columns styling */
                 .gst-column {
@@ -204,35 +200,27 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                     min-width: 5%;
                 }
 
-                /* Consigner Name column - prevent text wrapping */
+                /* Consigner Name column - keep in one line with more width */
                 .invoice-table th.consigner-name-column, .invoice-table td.consigner-name-column {
                     white-space: nowrap !important;
                     overflow: hidden !important;
                     text-overflow: ellipsis !important;
                     word-break: normal !important;
-                    word-wrap: normal !important;
                     overflow-wrap: normal !important;
+                    width: 24% !important;
+                    max-width: 24% !important;
                 }
 
-                /* Reduce padding for narrow numeric columns */
-                .invoice-table th:nth-child(1), .invoice-table td:nth-child(1), /* LR Number */
-                .invoice-table th:nth-child(2), .invoice-table td:nth-child(2), /* LR Date */
-                .invoice-table th:nth-child(4), .invoice-table td:nth-child(4), /* Reporting Date */
-                .invoice-table th:nth-child(5), .invoice-table td:nth-child(5), /* Delivery Date */
-                .invoice-table th:nth-child(8), .invoice-table td:nth-child(8), /* Packages */
-                .invoice-table th:nth-child(9), .invoice-table td:nth-child(9) { /* Weight */
+                /* Reduce padding for narrow numeric columns (use class-based selectors to avoid index issues) */
+                .invoice-table th.lr-number-column, .invoice-table td.lr-number-column,
+                .invoice-table th.lr-date-column, .invoice-table td.lr-date-column,
+                .invoice-table th.delivery-date-column, .invoice-table td.delivery-date-column,
+                .invoice-table th.packages-column, .invoice-table td.packages-column,
+                .invoice-table th.weight-column, .invoice-table td.weight-column {
                     padding: ${Math.max(6, 8 * tableScale)}px ${Math.max(2, 4 * tableScale)}px !important;
                 }
                 
-                /* Charges table column widths */
-                .charges-table th:nth-child(1), .charges-table td:nth-child(1) { width: 10%; } /* LR Number */
-                .charges-table th:nth-child(2), .charges-table td:nth-child(2) { width: 12%; } /* Freight */
-                .charges-table th:nth-child(3), .charges-table td:nth-child(3) { width: 12%; } /* AOC */
-                .charges-table th:nth-child(4), .charges-table td:nth-child(4) { width: 12%; } /* Hamali */
-                .charges-table th:nth-child(5), .charges-table td:nth-child(5) { width: 12%; } /* B. Ch. */
-                .charges-table th:nth-child(6), .charges-table td:nth-child(6) { width: 12%; } /* Tr. Ch. */
-                .charges-table th:nth-child(7), .charges-table td:nth-child(7) { width: 15%; } /* Detention Ch. */
-                .charges-table th:nth-child(8), .charges-table td:nth-child(8) { width: 15%; } /* Total */
+                /* Remove fixed widths on charges table to allow full-width distribution */
                 
                 /* Apply same scaling to charges table */
                 .charges-table {
@@ -273,6 +261,12 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                     grid-template-columns: 1fr 1fr;
                     gap: 1rem;
                 }
+                /* Improve readability of key information */
+                .invoice-details p, .invoice-details span { font-size: 18px !important; }
+                .invoice-sub { font-size: 18px !important; }
+                .invoice-remarks p { font-size: 18px !important; }
+                .bank-details p { font-size: 18px !important; }
+                .invoice-footer .font-bold { font-size: 18px !important; }
                 
                 /* Single box with divider styling */
                 .invoice-single-box {
@@ -292,12 +286,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                 }
                 
                 @media print {
-                    @page {
-                        size: A4 landscape;
-                        margin: 0;
-                        orphans: 3;
-                        widows: 3;
-                    }
+                    /* Page size controlled globally in PrintStyles to A4 landscape */
                     #invoice-pdf {
                         transform: none !important;
                         width: 100% !important;
@@ -474,7 +463,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                             </div>
                         </div>
 
-                        <p className="mb-4 font-semibold text-lg">Sub : {originLocationText}</p>
+                        <p className="invoice-sub mb-4 font-semibold text-lg">Sub : {originLocationText}</p>
                     
                     {/* Lorry Receipts Table */}
                     <div className="mb-4 no-break">
@@ -489,9 +478,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                                     <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center lr-number-column`}>LR Number</th>
                                     <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center lr-date-column`}>LR Date</th>
                                     <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center destination-column`}>Destination</th>
-                                    {hasReportingDate && (
-                                        <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center reporting-date-column`}>Reporting Date</th>
-                                    )}
+                                    
                                     {hasDeliveryDate && (
                                         <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center delivery-date-column`}>Delivery Date</th>
                                     )}
@@ -567,9 +554,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm lr-number-column`} title={String(lr.lrNumber || '')}>{lr.lrNumber || ''}</td>
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm lr-date-column`}>{formatDate(lr.date)}</td>
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm destination-column`} title={lr.to || ''}>{lr.to || ''}</td>
-                                            {hasReportingDate && (
-                                                <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm reporting-date-column`}>{lr.reportingDate ? formatDate(lr.reportingDate) : '-'}</td>
-                                            )}
+                                            
                                             {hasDeliveryDate && (
                                                 <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm delivery-date-column`}>{lr.deliveryDate ? formatDate(lr.deliveryDate) : '-'}</td>
                                             )}
@@ -637,7 +622,6 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                                 <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Freight (₹)</th>
                                 <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>AOC (₹)</th>
                                 <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Hamali (₹)</th>
-                                <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Bilty Charges (₹)</th>
                                 <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Tr. Ch. (₹)</th>
                                 <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Detention Ch. (₹)</th>
                                 <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Total (₹)</th>
@@ -659,7 +643,6 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{freight.toLocaleString('en-IN')}</td>
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{aoc.toLocaleString('en-IN')}</td>
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{hamali.toLocaleString('en-IN')}</td>
-                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{bCh.toLocaleString('en-IN')}</td>
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{trCh.toLocaleString('en-IN')}</td>
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{detentionCh.toLocaleString('en-IN')}</td>
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm font-semibold`}>{totalCharges.toLocaleString('en-IN')}</td>
@@ -673,7 +656,6 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                                     <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{totalFreight.toLocaleString('en-IN')}</td>
                                     <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{(invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.charges?.aoc || 0), 0).toLocaleString('en-IN')}</td>
                                     <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{(invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.charges?.hamali || 0), 0).toLocaleString('en-IN')}</td>
-                                    <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{(invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.charges?.bCh || 0), 0).toLocaleString('en-IN')}</td>
                                     <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{(invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.charges?.trCh || 0), 0).toLocaleString('en-IN')}</td>
                                     <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{(invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.charges?.detentionCh || 0), 0).toLocaleString('en-IN')}</td>
                                     <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{subTotal.toLocaleString('en-IN')}</td>
@@ -711,7 +693,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                     {/* Bottom Section: Amount in words, GSTIN Notes, Footer */}
                     <div className="invoice-section-bottom">
                         {/* Amount in words and Remarks */}
-                        <div className="mb-8 text-lg no-break">
+                        <div className="invoice-remarks mb-8 text-lg no-break">
                             <p className="font-bold"><span className="font-bold">Rs : </span>{numberToWords(Math.round(invoice.grandTotal || 0))} Only /-</p>
                             {invoice.isRcm ? (
                                 <div>
@@ -738,7 +720,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                             </div>
                         </div>
                         <div className="flex-1 flex justify-center">
-                            <div className="text-left text-base">
+                            <div className="bank-details text-left text-base">
                                 <p className="font-bold underline" style={{ color: '#DC2626' }}>Bank Details</p>
                                 {companyInfo?.currentBankAccount ? (
                                     <>
@@ -769,7 +751,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, companyInfo, cu
     const [showFreightBreakdown, setShowFreightBreakdown] = useState(false);
     const [hideTableBorders, setHideTableBorders] = useState(false);
     const [showPrintPreview, setShowPrintPreview] = useState(false);
-    const [previewScale, setPreviewScale] = useState(0.7); // Default 70% for better initial fit
+    const [previewScale, setPreviewScale] = useState(1.0); // Default 100% to match full A4
     const { openViewer, PDFViewerComponent } = usePDFViewer();
 
     const handleGeneratePdf = async () => {
@@ -991,13 +973,13 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, companyInfo, cu
             </div>
             <div 
                 id="invoice-pdf-container" 
-                className="print-container flex justify-center bg-white p-4 overflow-auto" 
+                className="print-container flex justify-center bg-white overflow-auto" 
                 style={{ 
                     minHeight: '100vh',
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'flex-start',
-                    padding: '20px'
+                    padding: 0
                 }}
                 data-pdf-export="true"
             >
@@ -1007,8 +989,8 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({ invoice, companyInfo, cu
                         transformOrigin: 'top center',
                         transition: 'transform 0.2s ease',
                         width: INVOICE_WIDTH,
-                        minHeight: INVOICE_HEIGHT,
-                        padding: '20px 0'
+                        height: INVOICE_HEIGHT,
+                        padding: 0
                     }}
                 >
                     <InvoiceView invoice={invoice} companyInfo={companyInfo} customers={customers} showFreightBreakdown={showFreightBreakdown} hideTableBorders={hideTableBorders} />
