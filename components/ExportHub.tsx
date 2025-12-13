@@ -22,14 +22,12 @@ interface ExportHubProps {
 }
 
 export const ExportHub: React.FC<ExportHubProps> = (props) => {
-  const [activeSection, setActiveSection] = useState('quick');
+  const [activeSection, setActiveSection] = useState('export');
 
   const sections = [
-    { key: 'quick', label: 'Quick Exports', icon: '⚡', description: 'One-click exports for common data' },
-    { key: 'advanced', label: 'Advanced Exports', icon: '🔧', description: 'Custom exports with filters and templates' },
-    { key: 'gst', label: 'GST Returns', icon: '📊', description: 'GSTR-1, GSTR-3B and GST compliance exports' },
-    { key: 'backup', label: 'Backup & Restore', icon: '💾', description: 'Data backup, restore and management' },
-    { key: 'history', label: 'Export History', icon: '📋', description: 'View and download previous exports' }
+    { key: 'export', label: 'Export Data', icon: '📊', description: 'Export your business data in various formats' },
+    { key: 'gst', label: 'GST Returns', icon: '📋', description: 'GSTR-1, GSTR-3B and GST compliance exports' },
+    { key: 'backup', label: 'Backup & History', icon: '💾', description: 'Data backup, restore and export history' }
   ];
 
   return (
@@ -66,11 +64,9 @@ export const ExportHub: React.FC<ExportHubProps> = (props) => {
 
       {/* Section Content */}
       <div className="mt-6">
-        {activeSection === 'quick' && <QuickExports {...props} />}
-        {activeSection === 'advanced' && <AdvancedExports {...props} />}
+        {activeSection === 'export' && <QuickExports {...props} />}
         {activeSection === 'gst' && <GSTReturns {...props} />}
         {activeSection === 'backup' && <BackupRestore {...props} />}
-        {activeSection === 'history' && <ExportHistory {...props} />}
       </div>
     </div>
   );

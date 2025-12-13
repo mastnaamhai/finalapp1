@@ -27,7 +27,7 @@ export const EnhancedLedger: React.FC<EnhancedLedgerProps> = (props) => {
   const [view, setView] = useState<LedgerView>('client');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [filters, setFilters] = useState<LedgerFilters>({
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Last 30 days
+    startDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Last year
     endDate: new Date().toISOString().split('T')[0]
   });
 
@@ -322,7 +322,13 @@ export const EnhancedLedger: React.FC<EnhancedLedgerProps> = (props) => {
               {/* Company Summary */}
               <div className="bg-green-50 p-4 rounded-lg">
                 <h4 className="font-semibold text-green-800">Company Financial Summary</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mt-2">
+                  <div>
+                    <span className="text-sm text-gray-600">Opening Balance:</span>
+                    <p className={`font-semibold ${getBalanceColor(companyLedgerData.openingBalanceType, companyLedgerData.openingBalance)}`}>
+                      {LedgerService.formatCurrency(companyLedgerData.openingBalance)} {companyLedgerData.openingBalanceType}
+                    </p>
+                  </div>
                   <div>
                     <span className="text-sm text-gray-600">Total Revenue:</span>
                     <p className="font-semibold text-green-600">
@@ -339,6 +345,12 @@ export const EnhancedLedger: React.FC<EnhancedLedgerProps> = (props) => {
                     <span className="text-sm text-gray-600">Net Profit:</span>
                     <p className={`font-semibold ${companyLedgerData.summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {LedgerService.formatCurrency(companyLedgerData.summary.netProfit)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-600">Closing Balance:</span>
+                    <p className={`font-semibold ${getBalanceColor(companyLedgerData.closingBalanceType, companyLedgerData.closingBalance)}`}>
+                      {LedgerService.formatCurrency(companyLedgerData.closingBalance)} {companyLedgerData.closingBalanceType}
                     </p>
                   </div>
                   <div>

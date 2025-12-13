@@ -1,8 +1,14 @@
+import React, { useState } from 'react';
 import type { LorryReceipt, Invoice, Payment, Customer, TruckHiringNote } from '../../types';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { exportToCsv } from '../../services/exportService';
 import { formatDate } from '../../services/utils';
+
+const EXPORT_FORMATS = [
+  { value: 'csv', label: 'CSV', description: 'Comma-separated values' },
+  { value: 'json', label: 'JSON', description: 'JavaScript Object Notation' }
+];
 
 interface QuickExportsProps {
   lorryReceipts: LorryReceipt[];
@@ -13,23 +19,55 @@ interface QuickExportsProps {
 }
 
 export const QuickExports = (props: QuickExportsProps) => {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [selectedFormat, setSelectedFormat] = useState('csv');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+
+  // Helper function to filter data by date range
+  const filterDataByDateRange = <T extends { date: string }>(data: T[]): T[] => {
+    if (!dateRange.start && !dateRange.end) {
+      return data; // No filtering if no dates selected
+    }
+
+    return data.filter(item => {
+      const itemDate = new Date(item.date);
+      const startDate = dateRange.start ? new Date(dateRange.start) : null;
+      const endDate = dateRange.end ? new Date(dateRange.end) : null;
+
+      // Set time to start/end of day for inclusive filtering
+      if (startDate) startDate.setHours(0, 0, 0, 0);
+      if (endDate) endDate.setHours(23, 59, 59, 999);
+
+      if (startDate && endDate) {
+        return itemDate >= startDate && itemDate <= endDate;
+      } else if (startDate) {
+        return itemDate >= startDate;
+      } else if (endDate) {
+        return itemDate <= endDate;
+      }
+
+      return true;
+    });
+  };
   const handleExportLrs = () => {
-    const data = props.lorryReceipts.map(lr => ({
+    const filteredData = filterDataByDateRange(props.lorryReceipts);
+    const data = filteredData.map(lr => ({
       'LR No': lr.lrNumber,
       'Date': formatDate(lr.date),
       'Consignor': lr.consignor?.name || '',
       'Consignee': lr.consignee?.name || '',
-      'Vehicle No': lr.vehicle?.number || '',
+      'Vehicle No': lr.vehicleNumber,
       'From': lr.from,
       'To': lr.to,
       'Amount': lr.totalAmount,
       'Status': lr.status
     }));
-    exportToCsv(data, 'lorry-receipts');
+    exportToCsv('lorry-receipts', data);
   };
 
   const handleExportInvoices = () => {
-    const data = props.invoices.map(inv => ({
+    const filteredData = filterDataByDateRange(props.invoices);
+    const data = filteredData.map(inv => ({
       'Invoice No': inv.invoiceNumber,
       'Date': formatDate(inv.date),
       'Customer': inv.customer?.name || '',
@@ -41,21 +79,22 @@ export const QuickExports = (props: QuickExportsProps) => {
       'Grand Total': inv.grandTotal,
       'Status': inv.status
     }));
-    exportToCsv(data, 'invoices');
+    exportToCsv('invoices', data);
   };
 
   const handleExportTHNs = () => {
-    const data = props.truckHiringNotes.map(thn => ({
+    const filteredData = filterDataByDateRange(props.truckHiringNotes);
+    const data = filteredData.map(thn => ({
       'THN No': thn.thnNumber,
       'Date': formatDate(thn.date),
       'Truck No': thn.truckNumber,
       'From': thn.loadingLocation,
       'To': thn.unloadingLocation,
       'Freight Rate': thn.freightRate,
-      'Total Amount': thn.totalAmount,
+      'Total Amount': thn.paidAmount + thn.balanceAmount,
       'Status': thn.status
     }));
-    exportToCsv(data, 'truck-hiring-notes');
+    exportToCsv('truck-hiring-notes', data);
   };
 
   const handleExportCustomers = () => {
@@ -69,19 +108,20 @@ export const QuickExports = (props: QuickExportsProps) => {
       'Phone': customer.contactPhone || customer.phone || '',
       'Email': customer.contactEmail || customer.email || ''
     }));
-    exportToCsv(data, 'customers');
+    exportToCsv('customers', data);
   };
 
   const handleExportPayments = () => {
-    const data = props.payments.map(payment => ({
+    const filteredData = filterDataByDateRange(props.payments);
+    const data = filteredData.map(payment => ({
       'Date': formatDate(payment.date),
       'Amount': payment.amount,
       'Mode': payment.mode,
-      'Reference': payment.reference || '',
-      'Notes': payment.notes || '',
-      'Status': payment.status
+      'Type': payment.type,
+      'Reference': payment.referenceNo || '',
+      'Notes': payment.notes || ''
     }));
-    exportToCsv(data, 'payments');
+    exportToCsv('payments', data);
   };
 
   const handleExportAllData = () => {
@@ -145,38 +185,45 @@ export const QuickExports = (props: QuickExportsProps) => {
     return start === end ? start : `${start}-to-${end}`;
   };
 
+  // Calculate filtered counts for display
+  const lrCount = dateRange.start || dateRange.end ? filterDataByDateRange(props.lorryReceipts).length : props.lorryReceipts.length;
+  const invoiceCount = dateRange.start || dateRange.end ? filterDataByDateRange(props.invoices).length : props.invoices.length;
+  const thnCount = dateRange.start || dateRange.end ? filterDataByDateRange(props.truckHiringNotes).length : props.truckHiringNotes.length;
+  const customerCount = props.customers.length; // Customers don't have dates, so no filtering
+  const paymentCount = dateRange.start || dateRange.end ? filterDataByDateRange(props.payments).length : props.payments.length;
+
   const exportButtons = [
     {
       label: 'Lorry Receipts',
-      count: props.lorryReceipts.length,
+      count: lrCount,
       onClick: handleExportLrs,
       description: 'Export all lorry receipts to CSV',
       color: 'blue'
     },
     {
       label: 'Invoices',
-      count: props.invoices.length,
+      count: invoiceCount,
       onClick: handleExportInvoices,
       description: 'Export all invoices with GST details to CSV',
       color: 'green'
     },
     {
       label: 'Truck Hiring Notes',
-      count: props.truckHiringNotes.length,
+      count: thnCount,
       onClick: handleExportTHNs,
       description: 'Export all truck hiring notes to CSV',
       color: 'purple'
     },
     {
       label: 'Customers',
-      count: props.customers.length,
+      count: customerCount,
       onClick: handleExportCustomers,
       description: 'Export all customer details to CSV',
       color: 'orange'
     },
     {
       label: 'Payments',
-      count: props.payments.length,
+      count: paymentCount,
       onClick: handleExportPayments,
       description: 'Export all payment records to CSV',
       color: 'red'
@@ -195,20 +242,36 @@ export const QuickExports = (props: QuickExportsProps) => {
       <div>
         <h3 className="text-xl font-bold text-gray-800">Quick Exports</h3>
         <p className="text-gray-600 mt-1">One-click exports for your most common data needs</p>
-        
-        {/* Data Range Info */}
-        <div className="mt-4 bg-blue-50 border border-blue-200 p-3 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span className="text-sm font-medium text-blue-800">Data Range:</span>
-            <span className="text-sm text-blue-700">
-              {getEarliestDate() === getLatestDate() 
-                ? getEarliestDate() 
-                : `${getEarliestDate()} to ${getLatestDate()}`
-              }
-            </span>
+
+        {/* Date Range Filters */}
+        <div className="mt-4 bg-blue-50 border border-blue-200 p-4 rounded-lg">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-sm font-medium text-blue-800">Filter by Date Range (Optional):</span>
+            </div>
+            <div className="flex space-x-2">
+              <div>
+                <label className="block text-xs text-blue-700 mb-1">From</label>
+                <input
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                  className="px-3 py-1 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-blue-700 mb-1">To</label>
+                <input
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                  className="px-3 py-1 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -239,21 +302,54 @@ export const QuickExports = (props: QuickExportsProps) => {
         ))}
       </div>
 
-      <Card className="bg-blue-50 border-blue-200">
+      {/* Advanced Options */}
+      <Card className="border-gray-300">
         <div className="p-4">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div>
+              <h3 className="text-lg font-medium text-gray-800">Advanced Options</h3>
+              <p className="text-sm text-gray-600">Choose export format</p>
             </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">Need more control?</h3>
-              <div className="mt-2 text-sm text-blue-700">
-                <p>Use the <strong>Advanced Exports</strong> tab for custom date ranges, field selection, and multiple export formats.</p>
+            <svg
+              className={`h-5 w-5 text-gray-500 transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showAdvanced && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Export Format
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {EXPORT_FORMATS.map(format => (
+                    <label key={format.value} className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="format"
+                        value={format.value}
+                        checked={selectedFormat === format.value}
+                        onChange={(e) => setSelectedFormat(e.target.value)}
+                        className="text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">{format.label}</span>
+                        <p className="text-xs text-gray-500">{format.description}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </Card>
     </div>

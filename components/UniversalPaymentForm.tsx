@@ -43,7 +43,8 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
     const [payment, setPayment] = useState({
         invoiceId,
         truckHiringNoteId,
-        ...(customerId && { customer: customerId }),
+        customerId: customerId || '', // Set customerId field for consistency
+        ...(customerId && { customer: customerId }), // Keep customer field for backend compatibility
         amount: Math.abs(balanceDue), // Use absolute value for payment amount (gross amount)
         date: getCurrentDate(),
         type: PaymentType.RECEIPT,

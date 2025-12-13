@@ -47,6 +47,13 @@ const navigationItems: NavItem[] = [
     isActive: (pathname) => pathname === '/payments'
   },
   {
+    id: 'transaction-history',
+    label: 'Transaction History',
+    icon: '📋',
+    path: '/transaction-history',
+    isActive: (pathname) => pathname === '/transaction-history'
+  },
+  {
     id: 'ledger',
     label: 'Ledger',
     icon: '📊',

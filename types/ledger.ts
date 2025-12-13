@@ -72,12 +72,20 @@ export interface CompanyLedgerData {
     endDate: string;
   };
   transactions: CompanyLedgerEntry[];
+  openingBalance: number;
+  openingBalanceType: 'DR' | 'CR';
+  closingBalance: number;
+  closingBalanceType: 'DR' | 'CR';
   summary: {
     totalRevenue: number;
     totalExpenses: number;
     netProfit: number;
     totalAssets: number;
     totalLiabilities: number;
+    openingBalance: number;
+    openingBalanceType: 'DR' | 'CR';
+    closingBalance: number;
+    closingBalanceType: 'DR' | 'CR';
   };
 }
 

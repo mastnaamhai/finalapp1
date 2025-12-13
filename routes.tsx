@@ -10,6 +10,7 @@ import { InvoicesWrapper } from './components/route-wrappers/InvoicesWrapper';
 import { InvoiceFormWrapper } from './components/route-wrappers/InvoiceFormWrapper';
 import { InvoicePDFWrapper } from './components/route-wrappers/InvoicePDFWrapper';
 import { PendingPaymentsWrapper } from './components/route-wrappers/PendingPaymentsWrapper';
+import { TransactionHistoryWrapper } from './components/route-wrappers/TransactionHistoryWrapper';
 import { LedgerWrapper } from './components/route-wrappers/LedgerWrapper';
 import { EnhancedLedgerWrapper } from './components/route-wrappers/EnhancedLedgerWrapper';
 import { LedgerPDFWrapper } from './components/route-wrappers/LedgerPDFWrapper';
@@ -75,6 +76,10 @@ export const router = createBrowserRouter([
       {
         path: 'payments',
         element: <PendingPaymentsWrapper />
+      },
+      {
+        path: 'transaction-history',
+        element: <TransactionHistoryWrapper />
       },
       {
         path: 'ledger',
