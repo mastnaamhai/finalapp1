@@ -129,10 +129,8 @@ export const createTruckHiringNoteSchema = z.object({
   truckNumber: z.string().min(1),
   truckType: z.string().min(1),
   vehicleCapacity: z.number().positive(),
-  loadingLocation: z.string().min(1),
-  unloadingLocation: z.string().min(1),
-  loadingDateTime: z.string().min(1),
-  expectedDeliveryDate: z.string().min(1),
+  loadingLocation: z.string().optional(),
+  unloadingLocation: z.string().optional(),
   goodsType: z.string().min(1),
   agencyName: z.string().min(1),
   truckOwnerName: z.string().min(1),
@@ -209,5 +207,3 @@ export const createBankAccountSchema = z.object({
 });
 
 export const updateBankAccountSchema = createBankAccountSchema.partial();
-
-

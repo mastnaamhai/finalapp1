@@ -35,10 +35,10 @@ export const getTruckHiringNoteById = asyncHandler(async (req: Request, res: Res
 export const createTruckHiringNote = asyncHandler(async (req: Request, res: Response) => {
   try {
     console.log('Received THN data:', JSON.stringify(req.body, null, 2));
-    
+
     const noteData = createTruckHiringNoteSchema.parse(req.body);
     console.log('Validated data:', JSON.stringify(noteData, null, 2));
-    
+
     // Generate THN number
     let nextThnNumber = Date.now(); // Fallback
     const config = await NumberingConfig.findOne({ type: 'truckHiringNoteId' });

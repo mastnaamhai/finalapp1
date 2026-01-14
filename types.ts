@@ -156,21 +156,7 @@ export interface Invoice {
   };
 }
 
-export interface CompanyInfo {
-    name: string;
-    address: string;
-    state: string;
-    phone1: string;
-    phone2: string;
-    email: string;
-    website: string;
-    gstin: string;
-    pan: string;
-    bankName: string;
-    accountNumber: string;
-    ifsc: string;
-    logo?: string; // Base64 encoded image or URL
-}
+
 
 export interface Payment {
     _id: string;
@@ -200,10 +186,10 @@ export interface TruckHiringNote {
   truckNumber: string;
   truckType: string;
   vehicleCapacity: number;
-  loadingLocation: string;
-  unloadingLocation: string;
-  loadingDateTime: string;
-  expectedDeliveryDate: string;
+  loadingLocation?: string;
+  unloadingLocation?: string;
+  loadingDateTime?: string;
+  expectedDeliveryDate?: string;
   goodsType: string;
   agencyName: string;
   truckOwnerName: string;

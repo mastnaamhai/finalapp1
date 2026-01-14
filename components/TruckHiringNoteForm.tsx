@@ -9,6 +9,7 @@ import { ValidatedInput } from './ui/ValidatedInput';
 import { ValidatedSelect } from './ui/ValidatedSelect';
 import { ValidatedTextarea } from './ui/ValidatedTextarea';
 import { AutocompleteInput } from './ui/AutocompleteInput';
+import { VehicleNumberInput } from './ui/VehicleNumberInput';
 import { getCurrentDate } from '../services/utils';
 import { commonCities } from '../constants/formData';
 import { useFormValidation } from '../hooks/useFormValidation';
@@ -29,8 +30,6 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
         vehicleCapacity: 0,
         loadingLocation: '',
         unloadingLocation: '',
-        loadingDateTime: '',
-        expectedDeliveryDate: '',
         goodsType: '',
         agencyName: companyInfo?.name || '', // Auto-populate with company name
         truckOwnerName: '',
@@ -56,16 +55,12 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
         truckNumber: fieldRules.vehicleNumber,
         truckType: { required: true, message: 'Truck type is required' },
         vehicleCapacity: fieldRules.vehicleCapacity,
-        loadingLocation: { required: true, minLength: 2, message: 'Loading location is required' },
-        unloadingLocation: { required: true, minLength: 2, message: 'Unloading location is required' },
-        loadingDateTime: { required: true, message: 'Loading date & time is required' },
-        expectedDeliveryDate: fieldRules.futureDate,
         goodsType: { required: true, minLength: 2, message: 'Type of goods is required' },
         agencyName: { required: true, minLength: 2, message: 'Agency name is required' },
         truckOwnerName: { required: true, minLength: 2, message: 'Truck owner name is required' },
-        truckOwnerContact: { 
-            pattern: /^[6-9]\d{9}$/, 
-            message: 'Contact number must be 10 digits starting with 6-9' 
+        truckOwnerContact: {
+            pattern: /^[6-9]\d{9}$/,
+            message: 'Contact number must be 10 digits starting with 6-9'
         },
         freightRate: fieldRules.freightRate,
         additionalCharges: { min: 0, message: 'Additional charges cannot be negative' },
@@ -123,24 +118,11 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
     // Validation function
     const validateForm = (): boolean => {
         const formErrors = validateEntireForm(note);
-        
-        // Additional custom validations
-        const customErrors: Record<string, string> = {};
-        
-        // Validate dates
-        if (note.loadingDateTime && note.expectedDeliveryDate) {
-            const loadingDate = new Date(note.loadingDateTime);
-            const deliveryDate = new Date(note.expectedDeliveryDate);
-            if (deliveryDate < loadingDate) {
-                customErrors.expectedDeliveryDate = 'Delivery date cannot be before loading date';
-            }
-        }
-        
+
         // Merge all errors
-        const allErrors = { ...formErrors, ...customErrors };
-        setErrors(allErrors);
-        
-        return Object.keys(allErrors).length === 0;
+        setErrors(formErrors);
+
+        return Object.keys(formErrors).length === 0;
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -165,7 +147,7 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (!validateForm()) {
             // Focus on first error field
             const firstErrorField = Object.keys(errors)[0];
@@ -175,7 +157,8 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
             }
             return;
         }
-        
+
+        console.log("Submitting THN data:", JSON.stringify(note, null, 2));
         setIsSaving(true);
         try {
             await onSave(note);
@@ -200,48 +183,75 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
                                 <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Basic Information</h3>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    <ValidatedInput
-                                        fieldName="date"
-                                        validationRules={validationRules}
-                                        value={note.date || ''}
-                                        onValueChange={(value) => handleValueChange('date', value)}
-                                        type="date"
-                                        required
-                                    />
-                                    <ValidatedInput
-                                        fieldName="truckNumber"
-                                        validationRules={validationRules}
-                                        value={note.truckNumber || ''}
-                                        onValueChange={(value) => handleValueChange('truckNumber', value)}
-                                        required
-                                        placeholder="e.g., MH-12-AB-1234"
-                                    />
-                                    <ValidatedSelect
-                                        fieldName="truckType"
-                                        validationRules={validationRules}
-                                        value={note.truckType || ''}
-                                        onValueChange={(value) => handleValueChange('truckType', value)}
-                                        options={truckTypes.map(type => ({ value: type, label: type }))}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    <ValidatedInput
-                                        fieldName="vehicleCapacity"
-                                        validationRules={validationRules}
-                                        value={note.vehicleCapacity || 0}
-                                        onValueChange={(value) => handleValueChange('vehicleCapacity', value)}
-                                        type="number"
-                                        required
-                                        min="0"
-                                        step="0.1"
-                                    />
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Your Agency Name
-                                            <span className="text-green-600 text-xs ml-2">(Pre-filled from company settings)</span>
+                                            Agreement Date <span className="text-red-500">*</span>
                                         </label>
+                                        <p className="text-xs text-gray-500 mb-2">Date when the truck hiring agreement is made</p>
+                                        <ValidatedInput
+                                            fieldName="date"
+                                            validationRules={validationRules}
+                                            value={note.date || ''}
+                                            onValueChange={(value) => handleValueChange('date', value)}
+                                            type="date"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Truck Number <span className="text-red-500">*</span>
+                                        </label>
+                                        <p className="text-xs text-gray-500 mb-2">Vehicle registration number (e.g., MH-12-AB-1234)</p>
+                                        <VehicleNumberInput
+                                            fieldName="truckNumber"
+                                            value={note.truckNumber || ''}
+                                            onChange={(value) => handleValueChange('truckNumber', value)}
+                                            onValueChange={handleValueChange}
+                                            required
+                                            error={errors.truckNumber}
+                                            placeholder="e.g., MH-12-AB-1234"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Truck Type <span className="text-red-500">*</span>
+                                        </label>
+                                        <p className="text-xs text-gray-500 mb-2">Type of truck/trailer being hired</p>
+                                        <ValidatedSelect
+                                            fieldName="truckType"
+                                            validationRules={validationRules}
+                                            value={note.truckType || ''}
+                                            onValueChange={(value) => handleValueChange('truckType', value)}
+                                            options={truckTypes.map(type => ({ value: type, label: type }))}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Vehicle Capacity (tons) <span className="text-red-500">*</span>
+                                        </label>
+                                        <p className="text-xs text-gray-500 mb-2">Maximum load capacity of the truck in tons</p>
+                                        <ValidatedInput
+                                            fieldName="vehicleCapacity"
+                                            validationRules={validationRules}
+                                            value={note.vehicleCapacity || 0}
+                                            onValueChange={(value) => handleValueChange('vehicleCapacity', value)}
+                                            type="number"
+                                            required
+                                            min="0"
+                                            step="0.1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Your Agency Name <span className="text-green-600 text-xs ml-2">(Pre-filled from company settings)</span>
+                                        </label>
+                                        <p className="text-xs text-gray-500 mb-2">Your transport company name (automatically filled)</p>
                                         <input
                                             type="text"
                                             value={note.agencyName || ''}
@@ -249,94 +259,46 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
                                             className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed"
                                         />
                                     </div>
-                                    <ValidatedInput
-                                        fieldName="truckOwnerName"
-                                        validationRules={validationRules}
-                                        value={note.truckOwnerName || ''}
-                                        onValueChange={(value) => handleValueChange('truckOwnerName', value)}
-                                        required
-                                        placeholder="Enter truck owner name"
-                                    />
-                                </div>
-
-                                <ValidatedInput
-                                    fieldName="truckOwnerContact"
-                                    validationRules={validationRules}
-                                    value={note.truckOwnerContact || ''}
-                                    onValueChange={(value) => handleValueChange('truckOwnerContact', value)}
-                                    placeholder="Enter contact number"
-                                />
-                            </div>
-
-                            {/* Trip Details Section */}
-                            <div className="space-y-6">
-                                <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Trip Details</h3>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Loading Location <span className="text-red-500">*</span>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Truck Owner Name <span className="text-red-500">*</span>
                                         </label>
-                                        <AutocompleteInput
-                                            name="loadingLocation"
-                                            value={note.loadingLocation || ''}
-                                            onChange={handleChange}
-                                            suggestions={commonCities}
-                                            placeholder="Enter loading location"
+                                        <p className="text-xs text-gray-500 mb-2">Full name of the truck owner or operator</p>
+                                        <ValidatedInput
+                                            fieldName="truckOwnerName"
+                                            validationRules={validationRules}
+                                            value={note.truckOwnerName || ''}
+                                            onValueChange={(value) => handleValueChange('truckOwnerName', value)}
                                             required
-                                            error={errors.loadingLocation}
-                                            helpText="Start typing to see city suggestions"
+                                            placeholder="Enter truck owner name"
                                         />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Unloading Location <span className="text-red-500">*</span>
-                                        </label>
-                                        <AutocompleteInput
-                                            name="unloadingLocation"
-                                            value={note.unloadingLocation || ''}
-                                            onChange={handleChange}
-                                            suggestions={commonCities}
-                                            placeholder="Enter unloading location"
-                                            required
-                                            error={errors.unloadingLocation}
-                                            helpText="Start typing to see city suggestions"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Loading Date & Time <span className="text-red-500">*</span>
-                                        </label>
-                                        <Input 
-                                            name="loadingDateTime" 
-                                            type="datetime-local" 
-                                            value={note.loadingDateTime || ''} 
-                                            onChange={handleChange} 
-                                            required 
-                                            error={errors.loadingDateTime}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Expected Delivery Date <span className="text-red-500">*</span>
-                                        </label>
-                                        <Input 
-                                            name="expectedDeliveryDate" 
-                                            type="date" 
-                                            value={note.expectedDeliveryDate || ''} 
-                                            onChange={handleChange} 
-                                            required 
-                                            error={errors.expectedDeliveryDate}
-                                        />
-                                        <p className="text-xs text-gray-500">Format: DD/MM/YYYY</p>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Type of Goods</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Truck Owner Contact (Optional)
+                                    </label>
+                                    <p className="text-xs text-gray-500 mb-2">Mobile number for contacting the truck owner (10 digits starting with 6-9)</p>
+                                    <ValidatedInput
+                                        fieldName="truckOwnerContact"
+                                        validationRules={validationRules}
+                                        value={note.truckOwnerContact || ''}
+                                        onValueChange={(value) => handleValueChange('truckOwnerContact', value)}
+                                        placeholder="Enter 10-digit mobile number"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Goods Details Section */}
+                            <div className="space-y-6">
+                                <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Goods Details</h3>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Type of Goods <span className="text-red-500">*</span>
+                                    </label>
+                                    <p className="text-xs text-gray-500 mb-2">Description of cargo being transported (e.g., Electronics, Textiles, Machinery)</p>
                                     <input
                                         type="text"
                                         name="goodsType"
@@ -344,7 +306,7 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
                                         onChange={handleChange}
                                         list="goods-types"
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        placeholder="Enter type of goods"
+                                        placeholder="Enter type of goods (e.g., Electronics)"
                                         required
                                     />
                                     <datalist id="goods-types">
@@ -357,82 +319,120 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
                             {/* Freight Details Section */}
                             <div className="space-y-6">
                                 <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Freight Details</h3>
-                                
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    <ValidatedInput
-                                        fieldName="freightRate"
-                                        validationRules={validationRules}
-                                        value={note.freightRate || 0}
-                                        onValueChange={(value) => handleValueChange('freightRate', value)}
-                                        type="number"
-                                        required
-                                        min="0"
-                                        step="0.01"
-                                    />
-                                    <Select 
-                                        label="Freight Rate Type" 
-                                        name="freightRateType" 
-                                        value={note.freightRateType || 'per_trip'} 
-                                        onChange={handleChange}
-                                        options={[
-                                            { value: 'per_trip', label: 'Per Trip' },
-                                            { value: 'per_ton', label: 'Per Ton' },
-                                            { value: 'per_km', label: 'Per KM' }
-                                        ]}
-                                        required 
-                                    />
-                                    <ValidatedInput
-                                        fieldName="additionalCharges"
-                                        validationRules={validationRules}
-                                        value={note.additionalCharges || 0}
-                                        onValueChange={(value) => handleValueChange('additionalCharges', value)}
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        placeholder="e.g., detention charges"
-                                    />
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Freight Rate (₹) <span className="text-red-500">*</span>
+                                        </label>
+                                        <p className="text-xs text-gray-500 mb-2">Amount charged for transportation services</p>
+                                        <ValidatedInput
+                                            fieldName="freightRate"
+                                            validationRules={validationRules}
+                                            value={note.freightRate || 0}
+                                            onValueChange={(value) => handleValueChange('freightRate', value)}
+                                            type="number"
+                                            required
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="Enter freight amount"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Freight Rate Type <span className="text-red-500">*</span>
+                                        </label>
+                                        <p className="text-xs text-gray-500 mb-2">How the freight rate is calculated</p>
+                                        <Select
+                                            label=""
+                                            name="freightRateType"
+                                            value={note.freightRateType || 'per_trip'}
+                                            onChange={handleChange}
+                                            options={[
+                                                { value: 'per_trip', label: 'Per Trip' },
+                                                { value: 'per_ton', label: 'Per Ton' },
+                                                { value: 'per_km', label: 'Per KM' }
+                                            ]}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Additional Charges (₹) (Optional)
+                                        </label>
+                                        <p className="text-xs text-gray-500 mb-2">Extra costs like detention, tolls, loading/unloading charges</p>
+                                        <ValidatedInput
+                                            fieldName="additionalCharges"
+                                            validationRules={validationRules}
+                                            value={note.additionalCharges || 0}
+                                            onValueChange={(value) => handleValueChange('additionalCharges', value)}
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="e.g., 500"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Payment Details Section */}
                             <div className="space-y-6">
                                 <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Payment Details</h3>
-                                
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <Select 
-                                        label="Payment Mode" 
-                                        name="paymentMode" 
-                                        value={note.paymentMode || 'Cash'} 
-                                        onChange={handleChange}
-                                        options={[
-                                            { value: 'Cash', label: 'Cash' },
-                                            { value: 'UPI', label: 'UPI' },
-                                            { value: 'Bank Transfer', label: 'Bank Transfer' },
-                                            { value: 'Cheque', label: 'Cheque' },
-                                            { value: 'Other', label: 'Other' }
-                                        ]}
-                                        required 
-                                        error={errors.paymentMode}
-                                    />
-                                    <Input 
-                                        label="Advance Amount (₹)" 
-                                        name="advanceAmount" 
-                                        type="number" 
-                                        value={note.advanceAmount || 0} 
-                                        onChange={handleChange} 
-                                        min="0"
-                                        step="0.01"
-                                    />
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Payment Mode <span className="text-red-500">*</span>
+                                        </label>
+                                        <p className="text-xs text-gray-500 mb-2">How the payment will be made to the truck owner</p>
+                                        <Select
+                                            label=""
+                                            name="paymentMode"
+                                            value={note.paymentMode || 'Cash'}
+                                            onChange={handleChange}
+                                            options={[
+                                                { value: 'Cash', label: 'Cash' },
+                                                { value: 'UPI', label: 'UPI' },
+                                                { value: 'Bank Transfer', label: 'Bank Transfer' },
+                                                { value: 'Cheque', label: 'Cheque' },
+                                                { value: 'Other', label: 'Other' }
+                                            ]}
+                                            required
+                                            error={errors.paymentMode}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Advance Amount (₹) (Optional)
+                                        </label>
+                                        <p className="text-xs text-gray-500 mb-2">Amount paid upfront to the truck owner before delivery</p>
+                                        <Input
+                                            label=""
+                                            name="advanceAmount"
+                                            type="number"
+                                            value={note.advanceAmount || 0}
+                                            onChange={handleChange}
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="Enter advance amount"
+                                        />
+                                    </div>
                                 </div>
 
-                                <Textarea 
-                                    label="Payment Terms (Optional)" 
-                                    name="paymentTerms" 
-                                    value={note.paymentTerms || ''} 
-                                    onChange={handleChange} 
-                                    rows={3}
-                                    placeholder="e.g., 50% advance, balance after delivery"
-                                />
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Payment Terms (Optional)
+                                    </label>
+                                    <p className="text-xs text-gray-500 mb-2">Payment schedule and conditions (e.g., 50% advance, balance after delivery)</p>
+                                    <Textarea
+                                        label=""
+                                        name="paymentTerms"
+                                        value={note.paymentTerms || ''}
+                                        onChange={handleChange}
+                                        rows={3}
+                                        placeholder="e.g., 50% advance, balance after delivery"
+                                    />
+                                </div>
 
                                 {/* Payment Summary */}
                                 <div className="bg-green-50 rounded-lg p-4">
@@ -460,30 +460,48 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <Input 
-                                        label="Linked LR Number (Optional)" 
-                                        name="linkedLR" 
-                                        value={note.linkedLR || ''} 
-                                        onChange={handleChange} 
-                                        placeholder="Link to Lorry Receipt"
-                                    />
-                                    <Input 
-                                        label="Linked Invoice Number (Optional)" 
-                                        name="linkedInvoice" 
-                                        value={note.linkedInvoice || ''} 
-                                        onChange={handleChange} 
-                                        placeholder="Link to Invoice"
-                                    />
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Linked LR Number (Optional)
+                                        </label>
+                                        <p className="text-xs text-gray-500 mb-2">Reference number of related Lorry Receipt document</p>
+                                        <Input
+                                            label=""
+                                            name="linkedLR"
+                                            value={note.linkedLR || ''}
+                                            onChange={handleChange}
+                                            placeholder="e.g., LR-001"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Linked Invoice Number (Optional)
+                                        </label>
+                                        <p className="text-xs text-gray-500 mb-2">Reference number of related Invoice document</p>
+                                        <Input
+                                            label=""
+                                            name="linkedInvoice"
+                                            value={note.linkedInvoice || ''}
+                                            onChange={handleChange}
+                                            placeholder="e.g., INV-001"
+                                        />
+                                    </div>
                                 </div>
 
-                                <ValidatedTextarea
-                                    fieldName="remarks"
-                                    validationRules={validationRules}
-                                    value={note.remarks || ''}
-                                    onValueChange={(value) => handleValueChange('remarks', value)}
-                                    rows={3}
-                                    placeholder="Any special instructions or notes..."
-                                />
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Remarks/Notes (Optional)
+                                    </label>
+                                    <p className="text-xs text-gray-500 mb-2">Any special instructions, conditions, or additional notes for this truck hiring</p>
+                                    <ValidatedTextarea
+                                        fieldName="remarks"
+                                        validationRules={validationRules}
+                                        value={note.remarks || ''}
+                                        onValueChange={(value) => handleValueChange('remarks', value)}
+                                        rows={3}
+                                        placeholder="Enter any special instructions or notes..."
+                                    />
+                                </div>
                             </div>
                         </div>
 

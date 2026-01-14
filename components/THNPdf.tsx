@@ -6,7 +6,7 @@ import { Logo } from './ui/Logo';
 import { PrintStyles } from './ui/PrintStyles';
 import { PDFViewer, usePDFViewer } from './ui/PDFViewer';
 import { PDFActionBar } from './ui/PDFActionBar';
-import { formatDate } from '../services/utils';
+import { formatDate, numberToWords } from '../services/utils';
 
 interface THNPdfProps {
     thn: TruckHiringNote;
@@ -100,7 +100,7 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
             </div>
 
             <div id="thn-pdf-container" className="print-container">
-                <div id="thn-pdf" className="thn-pdf bg-white shadow-2xl" style={{ width: '210mm', minHeight: '297mm', fontFamily: 'sans-serif', lineHeight: '1.5', margin: '0 auto', border: '1px solid #e5e7eb' }}>
+                <div id="thn-pdf" className="thn-pdf bg-white" style={{ width: '210mm', minHeight: '297mm', fontFamily: 'sans-serif', lineHeight: '1.5', margin: '0 auto', border: '2px solid #000000', padding: '20px', boxSizing: 'border-box' }}>
                     <style>{`
                         /* Screen styles - responsive scaling */
                         #thn-pdf {
@@ -238,12 +238,12 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
                         }
                         
                         .thn-pdf .highlight-box {
-                            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-                            border: 2px solid #3b82f6;
+                            background: #ffffff;
+                            border: 2px solid #000000;
                             border-radius: 8px;
                             padding: 20px;
                             margin: 18px 0;
-                            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+                            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                         }
                         
                         .thn-pdf .signature-section {
@@ -299,16 +299,16 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
                         }
                         
                         .thn-pdf .financial-total {
-                            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-                            border: 2px solid #10b981;
+                            background: #ffffff;
+                            border: 2px solid #000000;
                             border-radius: 8px;
                             padding: 16px;
                             text-align: center;
                         }
-                        
+
                         .thn-pdf .financial-balance {
-                            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-                            border: 2px solid #ef4444;
+                            background: #ffffff;
+                            border: 2px solid #000000;
                             border-radius: 8px;
                             padding: 16px;
                             text-align: center;
@@ -407,26 +407,40 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
                         }
                     `}</style>
                 
-                {/* Enhanced Professional Header */}
-                <div className="header-bg text-center">
-                    <div className="flex justify-center items-center mb-5">
-                        <Logo 
-                            size="lg" 
-                            showText={true} 
-                            className="justify-center company-logo"
-                            companyLogo={companyInfo?.logo}
-                            companyName={companyInfo?.name}
-                        />
-                    </div>
-                    <h1 className="text-3xl font-black mb-4 tracking-wide" style={{ letterSpacing: '2px' }}>TRUCK HIRING NOTE</h1>
-                    <div className="flex justify-center items-center gap-8 flex-wrap">
-                        <div className="header-badge">
-                            <span className="font-semibold text-sm">THN No:</span>
-                            <span className="font-black text-lg ml-2">#{thn.thnNumber}</span>
+                {/* Company Header - Outside boxes */}
+                <div className="mb-6 pb-4 pt-6" style={{ position: 'relative', width: '100%', overflow: 'visible', boxSizing: 'border-box', paddingTop: '24px' }}>
+                    {/* Company Name/Details Centered in Header */}
+                    <div className="text-center" style={{ width: '100%', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px', boxSizing: 'border-box', overflow: 'visible' }}>
+                        <h1 className="font-bold text-black uppercase leading-tight mb-6" style={{ fontSize: '48px', letterSpacing: '0.5px', fontWeight: '900', marginBottom: '24px', whiteSpace: 'nowrap', overflow: 'visible', textOverflow: 'clip', width: '100%', display: 'block', lineHeight: '1.1' }}>
+                            {companyInfo?.name || 'ALL INDIA LOGISTICS CHENNAI'}
+                        </h1>
+
+                        {/* Company Details - Bold and Bigger */}
+                        <div className="text-center mb-6">
+                            <p className="text-black text-xl font-bold mb-1" style={{ fontWeight: '700' }}>{companyInfo?.address || 'Company Address'}</p>
+                            <p className="text-black text-xl font-bold mb-1" style={{ fontWeight: '700' }}>
+                                PH: {companyInfo?.phone1 || 'N/A'} / {companyInfo?.phone2 || 'N/A'}
+                            </p>
+                            <div className="flex items-center justify-center gap-4 text-black text-xl font-bold mb-1">
+                                <span className="font-bold" style={{ fontWeight: '700' }}>E-Mail:- {companyInfo?.email || 'N/A'}</span>
+                                <span className="font-bold" style={{ fontWeight: '700' }}>Web :- {companyInfo?.website || 'N/A'}</span>
+                            </div>
+                            <p className="font-bold text-xl mt-1 text-black" style={{ fontWeight: '700' }}>GSTIN: {companyInfo?.gstin || 'N/A'}</p>
                         </div>
-                        <div className="header-badge">
-                            <span className="font-semibold text-sm">Date:</span>
-                            <span className="font-black text-lg ml-2">{formatDate(thn.date)}</span>
+
+                        {/* Document Title */}
+                        <h2 className="text-3xl font-bold text-black mb-4 tracking-wide" style={{ letterSpacing: '2px', fontSize: '32px', fontWeight: '700' }}>TRUCK HIRING NOTE</h2>
+
+                        {/* THN Details */}
+                        <div className="flex justify-center items-center gap-8 flex-wrap">
+                            <div className="bg-black text-white px-6 py-3 rounded">
+                                <span className="font-semibold text-lg">THN No:</span>
+                                <span className="font-black text-xl ml-2">#{thn.thnNumber}</span>
+                            </div>
+                            <div className="bg-black text-white px-6 py-3 rounded">
+                                <span className="font-semibold text-lg">Date:</span>
+                                <span className="font-black text-xl ml-2">{formatDate(thn.date)}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -504,11 +518,11 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
                         </div>
                         <div className="info-row">
                             <span className="label">Loading Date & Time</span>
-                            <span className="value">{formatDate(thn.loadingDateTime)}</span>
+                            <span className="value">{thn.loadingDateTime ? formatDate(thn.loadingDateTime) : 'N/A'}</span>
                         </div>
                         <div className="info-row">
                             <span className="label">Expected Delivery</span>
-                            <span className="value">{formatDate(thn.expectedDeliveryDate)}</span>
+                            <span className="value">{thn.expectedDeliveryDate ? formatDate(thn.expectedDeliveryDate) : 'N/A'}</span>
                         </div>
                     </div>
 
@@ -534,7 +548,7 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
                         <span>💰</span>
                         <span>Financial Summary</span>
                     </div>
-                    
+
                     <div className="financial-grid">
                         <div className="info-row">
                             <span className="label">Freight Rate</span>
@@ -545,29 +559,37 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
                             <span className="value">{thn.freightRateType.replace('_', ' ').toUpperCase()}</span>
                         </div>
                         {thn.additionalCharges > 0 && (
-                            <div className="info-row">
-                                <span className="label">Additional Charges</span>
-                                <span className="value amount">₹{thn.additionalCharges.toLocaleString('en-IN')}</span>
-                            </div>
+                        <div className="info-row">
+                            <span className="label">Additional Charges</span>
+                            <span className="value amount">₹{(thn.additionalCharges || 0).toLocaleString('en-IN')}</span>
+                        </div>
                         )}
                         <div className="info-row">
                             <span className="label">Advance Paid</span>
                             <span className="value amount">₹{thn.advanceAmount.toLocaleString('en-IN')}</span>
                         </div>
                     </div>
-                    
-                    <div className="grid-2 mt-6 pt-6 border-t-2 border-blue-400">
+
+                    <div className="grid-2 mt-6 pt-6 border-t-2 border-gray-400">
                         <div className="financial-total">
                             <div className="text-xs font-semibold text-gray-600 uppercase mb-2">Total Amount</div>
-                            <div className="text-2xl font-black text-emerald-700">
+                            <div className="text-2xl font-black text-black">
                                 ₹{(thn.freightRate + (thn.additionalCharges || 0)).toLocaleString('en-IN')}
                             </div>
                         </div>
                         <div className="financial-balance">
                             <div className="text-xs font-semibold text-gray-600 uppercase mb-2">Balance Amount</div>
-                            <div className="text-2xl font-black text-red-700">
+                            <div className="text-2xl font-black text-black">
                                 ₹{thn.balanceAmount.toLocaleString('en-IN')}
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Amount in Words */}
+                    <div className="mt-4 pt-4 border-t-2 border-gray-400">
+                        <div className="text-sm">
+                            <span className="font-semibold">Amount in Words: </span>
+                            <span className="font-bold">{numberToWords(Math.round(thn.freightRate + (thn.additionalCharges || 0)))} Only</span>
                         </div>
                     </div>
                 </div>
@@ -611,6 +633,42 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
                         </div>
                     )}
                 </div>
+
+                {/* Bank Details */}
+                {companyInfo?.currentBankAccount && (
+                    <div className="border-section no-break mt-6">
+                        <div className="section-title">
+                            <span>🏦</span>
+                            <span>Bank Details for Payment</span>
+                        </div>
+                        <div className="grid-2 gap-6">
+                            <div>
+                                <div className="info-row">
+                                    <span className="label">Bank Name</span>
+                                    <span className="value font-semibold">{companyInfo.currentBankAccount.bankName}</span>
+                                </div>
+                                <div className="info-row">
+                                    <span className="label">Account Number</span>
+                                    <span className="value font-semibold">{companyInfo.currentBankAccount.accountNumber}</span>
+                                </div>
+                                <div className="info-row">
+                                    <span className="label">Account Type</span>
+                                    <span className="value">{companyInfo.currentBankAccount.accountType}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="info-row">
+                                    <span className="label">IFSC Code</span>
+                                    <span className="value font-semibold">{companyInfo.currentBankAccount.ifscCode}</span>
+                                </div>
+                                <div className="info-row">
+                                    <span className="label">Branch</span>
+                                    <span className="value">{companyInfo.currentBankAccount.branch}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Enhanced Signatures */}
                 <div className="grid-2 no-break mt-8">

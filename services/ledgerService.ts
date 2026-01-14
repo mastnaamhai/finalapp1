@@ -208,8 +208,8 @@ export class LedgerService {
               notes: payment.notes || `Payment Mode: ${payment.mode}`
             }
           );
-        } else {
-          const hasTDS = payment.tdsApplicable && payment.type === PaymentType.RECEIPT && payment.tdsAmount && payment.tdsAmount > 0;
+        } else if (payment.type === PaymentType.RECEIPT) {
+          const hasTDS = payment.tdsApplicable && payment.tdsAmount && payment.tdsAmount > 0;
           const grossAmount = hasTDS ? (payment.amount + payment.tdsAmount!) : payment.amount;
           const netAmount = payment.amount;
 
@@ -249,6 +249,19 @@ export class LedgerService {
             balance: 0,
             balanceType: 'CR',
             reference: payment.invoiceId ? `INV-${typeof payment.invoiceId === 'string' ? payment.invoiceId : (payment.invoiceId as Invoice).invoiceNumber}` : undefined,
+            customerName: payment.customer?.name,
+            notes: payment.notes || `Payment Mode: ${payment.mode}`
+          });
+        } else if (payment.type === PaymentType.PAYMENT) {
+          // Opening balance for payments made
+          beforeEntries.push({
+            date: payment.date,
+            particulars: `Opening - Payment made to ${payment.customer?.name || 'Unknown Vendor'}${payment.truckHiringNoteId ? ` for THN-${typeof payment.truckHiringNoteId === 'string' ? payment.truckHiringNoteId : (payment.truckHiringNoteId as TruckHiringNote).thnNumber}` : ''}`,
+            debit: payment.amount,
+            credit: 0,
+            balance: 0,
+            balanceType: 'DR',
+            reference: payment.referenceNo || payment._id.slice(-6),
             customerName: payment.customer?.name,
             notes: payment.notes || `Payment Mode: ${payment.mode}`
           });
@@ -326,9 +339,9 @@ export class LedgerService {
             customerName: payment.customer?.name,
             notes: payment.notes || `Payment Mode: ${payment.mode}`
           });
-        } else {
+        } else if (payment.type === PaymentType.RECEIPT) {
           // Handle TDS for Receipts
-          const hasTDS = payment.tdsApplicable && payment.type === PaymentType.RECEIPT && payment.tdsAmount && payment.tdsAmount > 0;
+          const hasTDS = payment.tdsApplicable && payment.tdsAmount && payment.tdsAmount > 0;
           const grossAmount = hasTDS ? (payment.amount + payment.tdsAmount!) : payment.amount;
 
           // Payment Received (Credit - reduces pending receivables)
@@ -358,6 +371,19 @@ export class LedgerService {
               notes: `TDS deducted from payment received`
             });
           }
+        } else if (payment.type === PaymentType.PAYMENT) {
+          // Payment Made (Debit - money going out, e.g., to truck owners)
+          entries.push({
+            date: payment.date,
+            particulars: `Payment made to ${payment.customer?.name || 'Unknown Vendor'}${payment.truckHiringNoteId ? ` for THN-${typeof payment.truckHiringNoteId === 'string' ? payment.truckHiringNoteId : (payment.truckHiringNoteId as TruckHiringNote).thnNumber}` : ''} (Ref: ${payment.referenceNo || payment._id.slice(-6)})`,
+            debit: payment.amount,
+            credit: 0,
+            balance: 0,
+            balanceType: 'DR',
+            reference: payment.referenceNo || payment._id.slice(-6),
+            customerName: payment.customer?.name,
+            notes: payment.notes || `Payment Mode: ${payment.mode}`
+          });
         }
       }
     });
