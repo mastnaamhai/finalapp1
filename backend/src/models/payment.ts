@@ -17,6 +17,13 @@ export interface IPayment extends Document {
   tdsRate?: number;
   tdsAmount?: number;
   tdsDate?: string;
+  // Settlement tracking
+  settlements?: {
+    invoiceId: Schema.Types.ObjectId;
+    amount: number;
+    date: string;
+  }[];
+  unsettledAmount?: number;
 }
 
 const PaymentSchema = new Schema({
@@ -35,6 +42,13 @@ const PaymentSchema = new Schema({
   tdsRate: { type: Number },
   tdsAmount: { type: Number },
   tdsDate: { type: String },
+  // Settlement tracking
+  settlements: [{
+    invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice', required: true },
+    amount: { type: Number, required: true },
+    date: { type: String, required: true }
+  }],
+  unsettledAmount: { type: Number, default: 0 }
 });
 
 export default model<IPayment>('Payment', PaymentSchema);

@@ -17,7 +17,7 @@ import type {
 
 export class LedgerService {
   /**
-   * Generate client ledger data for a specific customer
+   * Generate client ledger data for a specific customer with proper invoice-wise settlement
    */
   static generateClientLedger(
     customerId: string,
@@ -27,82 +27,81 @@ export class LedgerService {
     truckHiringNotes: TruckHiringNote[],
     filters?: LedgerFilters
   ): ClientLedgerData {
-    console.log('=== Client Ledger Generation Debug ===');
+    console.log('=== Enhanced Client Ledger Generation ===');
     console.log('Customer ID:', customerId, 'Name:', customer.name);
-    console.log('Input filters:', filters);
-    console.log('Total payments received:', payments.length);
-    console.log('Total invoices received:', invoices.length);
 
-    // Filter transactions for this customer - robust filtering for customer linkages
+    const startDate = filters?.startDate ? new Date(filters.startDate) : null;
+    const endDate = filters?.endDate ? new Date(filters.endDate) : null;
+
+    // Filter transactions for this customer
     const customerInvoices = invoices.filter(inv => inv.customer?._id === customerId);
-    console.log('Customer invoices found:', customerInvoices.length);
-
     const customerPayments = payments.filter(p => {
-      // Check customerId first (for payments created with customerId)
       if ((p as any).customerId === customerId) return true;
-      // Check populated customer object (for existing payments from API)
       return ((p as any).customer?._id === customerId);
     });
-    console.log('Customer payments found after filtering:', customerPayments.length);
-
     const customerTHNs = truckHiringNotes.filter(thn => thn.truckOwnerName === customer.name);
-    console.log('Customer THNs found:', customerTHNs.length);
 
-    // Generate ledger entries
+    console.log(`Customer has ${customerInvoices.length} invoices, ${customerPayments.length} payments`);
+
+    // Calculate opening balance from transactions before start date
+    const openingBalance = this.calculateOpeningBalance(customerId, customerInvoices, customerPayments, startDate);
+
+    // Generate ledger entries for the period
     const entries: ClientLedgerEntry[] = [];
 
-    // Process invoices (debit entries)
+    // Process invoices in the period (debit entries for receivables)
     customerInvoices.forEach(invoice => {
-      if (!filters || !filters.startDate || new Date(invoice.date) >= new Date(filters.startDate)) {
-        entries.push({
-          date: invoice.date,
-          voucherNumber: `INV-${invoice.invoiceNumber}`,
-          voucherType: 'INVOICE',
-          particulars: `Invoice No: INV-${invoice.invoiceNumber} - ${this.getInvoiceDescription(invoice)}`,
-          debit: invoice.grandTotal,
-          credit: 0,
-          balance: 0, // Will be calculated later
-          balanceType: 'DR',
-          reference: `INV-${invoice.invoiceNumber}`,
-          notes: invoice.remarks || undefined
-        });
+      const invoiceDate = new Date(invoice.date);
+      if (!startDate || invoiceDate >= startDate) {
+        if (!endDate || invoiceDate <= endDate) {
+          entries.push({
+            date: invoice.date,
+            voucherNumber: `INV-${invoice.invoiceNumber}`,
+            voucherType: 'INVOICE',
+            particulars: `Invoice No: INV-${invoice.invoiceNumber} - ${this.getInvoiceDescription(invoice)}`,
+            debit: invoice.grandTotal,
+            credit: 0,
+            balance: 0, // Will be calculated later
+            balanceType: 'DR',
+            reference: `INV-${invoice.invoiceNumber}`,
+            notes: invoice.remarks || undefined
+          });
+        }
       }
     });
 
-    console.log('Processing payments into ledger entries...');
+    // Process payments in the period
     customerPayments.forEach(payment => {
-      const passesDateFilter = !filters || !filters.startDate || new Date(payment.date) >= new Date(filters.startDate);
-      console.log(`Payment ${payment._id}: Date=${payment.date}, Amount=${payment.amount}, PassesDateFilter=${passesDateFilter}`);
+      const paymentDate = new Date(payment.date);
+      if (!startDate || paymentDate >= startDate) {
+        if (!endDate || paymentDate <= endDate) {
+          const paymentType = payment.type === PaymentType.ADVANCE ? 'ADVANCE' : 'PAYMENT';
+          const particulars = this.getPaymentParticulars(payment, customerInvoices, customerTHNs);
 
-      if (passesDateFilter) {
-        const paymentType = payment.type === PaymentType.ADVANCE ? 'ADVANCE' : 'PAYMENT';
-        const particulars = this.getPaymentParticulars(payment, customerInvoices, customerTHNs);
-        console.log(`Adding payment entry: ${particulars}, Credit: ${payment.amount}`);
-
-        entries.push({
-          date: payment.date,
-          voucherNumber: payment.referenceNo || `PAY-${payment._id.slice(-6)}`,
-          voucherType: paymentType as any,
-          particulars,
-          debit: 0,
-          credit: payment.amount,
-          balance: 0, // Will be calculated later
-          balanceType: 'CR',
-          reference: payment.invoiceId ? `INV-${typeof payment.invoiceId === 'string' ? payment.invoiceId : (payment.invoiceId as Invoice).invoiceNumber}` : undefined,
-          paymentMode: payment.mode,
-          notes: payment.notes || undefined
-        });
-      } else {
-        console.log(`Payment ${payment._id} filtered out by date filter`);
+          // For advances, treat as credit to customer (reduces receivable balance)
+          // For receipts/payments, also treat as credit but track settlement
+          entries.push({
+            date: payment.date,
+            voucherNumber: payment.referenceNo || `PAY-${payment._id.slice(-6)}`,
+            voucherType: paymentType as any,
+            particulars,
+            debit: 0,
+            credit: payment.amount, // All payments reduce customer balance
+            balance: 0, // Will be calculated later
+            balanceType: 'CR',
+            reference: payment.invoiceId ? `INV-${typeof payment.invoiceId === 'string' ? payment.invoiceId : (payment.invoiceId as Invoice).invoiceNumber}` : undefined,
+            paymentMode: payment.mode,
+            notes: payment.notes || undefined
+          });
+        }
       }
     });
-    console.log(`Total ledger entries created: ${entries.length} (should include ${customerPayments.length} payments as credits)`);
 
     // Sort entries by date
     entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // Calculate running balances
-    let runningBalance = 0;
+    // Calculate running balances starting from opening balance
+    let runningBalance = openingBalance.amount * (openingBalance.type === 'DR' ? 1 : -1);
     const processedEntries = entries.map(entry => {
       runningBalance += (entry.debit - entry.credit);
       return {
@@ -112,24 +111,68 @@ export class LedgerService {
       };
     });
 
-    // Generate summary
+    // Calculate summary
+    const totalDebits = processedEntries.reduce((sum, entry) => sum + entry.debit, 0);
+    const totalCredits = processedEntries.reduce((sum, entry) => sum + entry.credit, 0);
+    const closingBalanceAmount = Math.abs(runningBalance);
+    const closingBalanceType = runningBalance >= 0 ? 'DR' : 'CR' as 'DR' | 'CR';
+
     const summary: LedgerSummary = {
-      openingBalance: 0,
-      openingBalanceType: 'DR',
-      totalDebits: processedEntries.reduce((sum, entry) => sum + entry.debit, 0),
-      totalCredits: processedEntries.reduce((sum, entry) => sum + entry.credit, 0),
-      closingBalance: processedEntries.length > 0 ? processedEntries[processedEntries.length - 1].balance : 0,
-      closingBalanceType: processedEntries.length > 0 ? processedEntries[processedEntries.length - 1].balanceType : 'DR',
+      openingBalance: openingBalance.amount,
+      openingBalanceType: openingBalance.type,
+      totalDebits,
+      totalCredits,
+      closingBalance: closingBalanceAmount,
+      closingBalanceType,
       transactionCount: processedEntries.length
     };
+
+    console.log(`Opening Balance: ${openingBalance.amount} ${openingBalance.type}`);
+    console.log(`Period Debits: ${totalDebits}, Credits: ${totalCredits}`);
+    console.log(`Closing Balance: ${closingBalanceAmount} ${closingBalanceType}`);
 
     return {
       customerId,
       customerName: customer.name,
-      openingBalance: 0,
-      openingBalanceType: 'DR',
+      openingBalance: openingBalance.amount,
+      openingBalanceType: openingBalance.type,
       transactions: processedEntries,
       summary
+    };
+  }
+
+  /**
+   * Calculate opening balance for a customer from historical transactions
+   */
+  private static calculateOpeningBalance(
+    customerId: string,
+    allInvoices: Invoice[],
+    allPayments: Payment[],
+    startDate: Date | null
+  ): { amount: number; type: 'DR' | 'CR' } {
+    if (!startDate) {
+      return { amount: 0, type: 'DR' };
+    }
+
+    let balance = 0;
+
+    // Add all invoices before start date (increases receivables - DR)
+    allInvoices.forEach(invoice => {
+      if (new Date(invoice.date) < startDate) {
+        balance += invoice.grandTotal;
+      }
+    });
+
+    // Subtract all payments before start date (reduces receivables - CR)
+    allPayments.forEach(payment => {
+      if (new Date(payment.date) < startDate) {
+        balance -= payment.amount;
+      }
+    });
+
+    return {
+      amount: Math.abs(balance),
+      type: balance >= 0 ? 'DR' : 'CR'
     };
   }
 

@@ -136,9 +136,6 @@ export interface Invoice {
   gstType: GstType;
   cgstRate: number;
   sgstRate: number;
-  igstRate: number;
-  cgstAmount: number;
-  sgstAmount: number;
   igstAmount: number;
   grandTotal: number;
   isRcm: boolean;
@@ -154,6 +151,14 @@ export interface Invoice {
     transporterName?: string;
     lrNumber?: string;
   };
+  // Settlement tracking
+  settlements?: {
+    paymentId: string;
+    amount: number;
+    date: string;
+  }[];
+  settledAmount?: number;
+  outstandingAmount?: number;
 }
 
 
@@ -177,6 +182,13 @@ export interface Payment {
     tdsRate?: number;
     tdsAmount?: number;
     tdsDate?: string;
+    // Settlement tracking
+    settlements?: {
+      invoiceId: string;
+      amount: number;
+      date: string;
+    }[];
+    unsettledAmount?: number;
 }
 
 export interface TruckHiringNote {

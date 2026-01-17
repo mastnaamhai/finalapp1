@@ -32,6 +32,14 @@ export interface IInvoice extends Document {
     transporterName?: string;
     lrNumber?: string;
   };
+  // Settlement tracking
+  settlements?: {
+    paymentId: Types.ObjectId;
+    amount: number;
+    date: string;
+  }[];
+  settledAmount?: number;
+  outstandingAmount?: number;
   // Virtuals
   paidAmount: number;
   balanceDue: number;
@@ -63,14 +71,22 @@ const InvoiceSchema = new Schema({
   // Separate freight charges fields
   freightCharges: {
     amount: { type: Number, default: 0 },
-    paymentType: { 
-      type: String, 
-      enum: ['Paid', 'To Pay', 'Not Applicable'], 
-      default: 'Not Applicable' 
+    paymentType: {
+      type: String,
+      enum: ['Paid', 'To Pay', 'Not Applicable'],
+      default: 'Not Applicable'
     },
     transporterName: { type: String },
     lrNumber: { type: String }
   },
+  // Settlement tracking
+  settlements: [{
+    paymentId: { type: Schema.Types.ObjectId, ref: 'Payment', required: true },
+    amount: { type: Number, required: true },
+    date: { type: String, required: true }
+  }],
+  settledAmount: { type: Number, default: 0 },
+  outstandingAmount: { type: Number, default: 0 }
 }, {
   // Ensure virtuals are included when converting to JSON
   toJSON: { virtuals: true },

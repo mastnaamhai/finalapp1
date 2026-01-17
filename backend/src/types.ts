@@ -143,6 +143,14 @@ export interface Invoice {
     transporterName?: string;
     lrNumber?: string;
   };
+  // Settlement tracking
+  settlements?: {
+    paymentId: string;
+    amount: number;
+    date: string;
+  }[];
+  settledAmount?: number;
+  outstandingAmount?: number;
 }
 
 export interface CompanyInfo {
@@ -166,7 +174,7 @@ export interface Payment {
     invoice?: Invoice;
     truckHiringNoteId?: string;
     truckHiringNote?: TruckHiringNote;
-    customerId: string;
+    customerId?: string;
     customer?: Customer;
     date: string;
     amount: number;
@@ -179,6 +187,13 @@ export interface Payment {
     tdsRate?: number;
     tdsAmount?: number;
     tdsDate?: string;
+    // Settlement tracking
+    settlements?: {
+      invoiceId: string;
+      amount: number;
+      date: string;
+    }[];
+    unsettledAmount?: number;
 }
 
 export interface TruckHiringNote {
@@ -210,4 +225,3 @@ export interface TruckHiringNote {
   paidAmount: number;
   payments: Payment[];
 }
-

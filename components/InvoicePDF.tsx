@@ -710,14 +710,6 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                     <div className="flex justify-between items-end pt-4">
                         <div className="relative">
                             <p className="font-bold text-lg">FOR {companyInfo?.name || 'Company Name'}</p>
-                            <div className="w-32 h-20 border-2 border-blue-500 rounded-full flex items-center justify-center text-blue-500 -rotate-12 mt-4">
-                                <div className="text-center leading-tight">
-                                    <p className="font-bold text-sm">ALL INDIA</p>
-                                    <p className="font-bold text-xs">LOGISTICS</p>
-                                    <p className="text-xs">MUMBAI</p>
-                                    <p className="text-xs">400 001</p>
-                                </div>
-                            </div>
                         </div>
                         <div className="flex-1 flex justify-center">
                             <div className="bank-details text-left text-base">
