@@ -707,7 +707,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                         </div>
 
                     {/* Footer */}
-                    <div className="flex justify-between items-end pt-4">
+                    <div className="flex justify-between items-start pt-4">
                         <div className="relative">
                             <p className="font-bold text-lg">FOR {companyInfo?.name || 'Company Name'}</p>
                         </div>
