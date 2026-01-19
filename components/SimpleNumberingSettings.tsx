@@ -3,6 +3,7 @@ import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { simpleNumberingService } from '../services/simpleNumberingService';
+import { API_BASE_URL } from '../constants';
 
 export const SimpleNumberingSettings: React.FC = () => {
   const [invoiceStartingNumber, setInvoiceStartingNumber] = useState<number>(1001);
@@ -26,7 +27,7 @@ export const SimpleNumberingSettings: React.FC = () => {
     setIsLoading(true);
     try {
       // First sync current numbers with existing data
-      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/numbering/sync-current`, {
+      await fetch(`${API_BASE_URL}/api/numbering/sync-current`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
