@@ -92,6 +92,12 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     const [showCustomerModal, setShowCustomerModal] = useState(false);
     const [overrideFreight, setOverrideFreight] = useState(false);
 
+    // Additional Invoice-level charges to be distributed
+    const [extraCharge, setExtraCharge] = useState({
+        amount: 0,
+        type: 'bCh' as 'bCh' | 'hamali' | 'aoc' | 'trCh' | 'detentionCh' | 'freight'
+    });
+
     // Validation rules for invoice form
     const validationRules = {
         // Use anyDate when custom invoice number is enabled to allow past dates for custom entries
@@ -167,18 +173,22 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         validateOnSubmit: true
     });
 
+    // Calculate Breakdown of charges from LRs
+    const chargeBreakdown = useMemo(() => {
+        const lrs = invoice.lorryReceipts || [];
+        const freight = lrs.reduce((sum, lr) => sum + (lr.charges?.freight || 0), 0);
+        const bCh = lrs.reduce((sum, lr) => sum + (lr.charges?.bCh || 0), 0);
+        const hamali = lrs.reduce((sum, lr) => sum + (lr.charges?.hamali || 0), 0);
+        const other = lrs.reduce((sum, lr) => {
+            return sum + (lr.charges?.aoc || 0) + (lr.charges?.trCh || 0) + (lr.charges?.detentionCh || 0);
+        }, 0);
+
+        return { freight, bCh, hamali, other, total: freight + bCh + hamali + other };
+    }, [invoice.lorryReceipts]);
+
     // Calculate totals
     const calculateTotals = useCallback(() => {
-        const totalAmount = invoice.lorryReceipts?.reduce((sum, lr) => {
-            const lrCharges = lr.charges || {};
-            const lrTotal = (lrCharges.freight || 0) +
-                          (lrCharges.aoc || 0) +
-                          (lrCharges.hamali || 0) +
-                          (lrCharges.bCh || 0) +
-                          (lrCharges.trCh || 0) +
-                          (lrCharges.detentionCh || 0);
-            return sum + lrTotal;
-        }, 0) || 0;
+        const totalAmount = chargeBreakdown.total;
         
         let cgstAmount = 0;
         let sgstAmount = 0;
@@ -382,6 +392,26 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
             customerId: customer._id
         }));
         setShowCustomerModal(false);
+    };
+
+    const handleApplyExtraCharge = () => {
+        if (!invoice.lorryReceipts || invoice.lorryReceipts.length === 0 || extraCharge.amount <= 0) return;
+
+        const amountPerLr = extraCharge.amount / invoice.lorryReceipts.length;
+
+        setInvoice(prev => ({
+            ...prev,
+            lorryReceipts: (prev.lorryReceipts || []).map(lr => ({
+                ...lr,
+                charges: {
+                    ...lr.charges,
+                    [extraCharge.type]: (lr.charges as any)?.[extraCharge.type] + amountPerLr
+                }
+            }))
+        }));
+
+        // Reset extra charge input
+        setExtraCharge(prev => ({ ...prev, amount: 0 }));
     };
 
     // Auto-populate invoice fields based on selected LRs
@@ -1118,9 +1148,31 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Financial Summary</h3>
                                     
                                     <div className="space-y-3">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Subtotal:</span>
-                                            <span className="font-medium">₹{(invoice.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-600">LR Freight Total:</span>
+                                            <span className="font-medium">₹{chargeBreakdown.freight.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                        </div>
+                                        {chargeBreakdown.bCh > 0 && (
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">Booking Charges:</span>
+                                                <span className="font-medium">₹{chargeBreakdown.bCh.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                            </div>
+                                        )}
+                                        {chargeBreakdown.hamali > 0 && (
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">Hamali:</span>
+                                                <span className="font-medium">₹{chargeBreakdown.hamali.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                            </div>
+                                        )}
+                                        {chargeBreakdown.other > 0 && (
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">Other Charges:</span>
+                                                <span className="font-medium">₹{chargeBreakdown.other.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between border-t border-gray-100 pt-2 font-semibold">
+                                            <span className="text-gray-800">Subtotal:</span>
+                                            <span className="text-gray-800">₹{(invoice.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                         </div>
                                         
                                         {!invoice.isRcm && (
@@ -1158,6 +1210,52 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                                             <p className="text-sm text-gray-600">
                                                 In words: {numberToWords(Math.round(invoice.grandTotal || 0))} Only /-
                                             </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Charge Distribution Tool */}
+                                    <div className="mt-6 pt-6 border-t border-gray-200">
+                                        <h4 className="text-sm font-semibold text-gray-800 mb-3">Add Common Charges to LRs</h4>
+                                        <p className="text-xs text-gray-500 mb-4">Add a charge here to distribute it equally among all {selectedLrsCount} selected Lorry Receipts.</p>
+
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-1 gap-3">
+                                                <div className="flex space-x-2">
+                                                    <div className="flex-1">
+                                                        <Input
+                                                            type="number"
+                                                            value={extraCharge.amount || ''}
+                                                            onChange={(e) => setExtraCharge(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
+                                                            placeholder="Amount to add"
+                                                            className="h-10"
+                                                        />
+                                                    </div>
+                                                    <div className="w-1/2">
+                                                        <Select
+                                                            value={extraCharge.type}
+                                                            onChange={(e) => setExtraCharge(prev => ({ ...prev, type: e.target.value as any }))}
+                                                            className="h-10"
+                                                        >
+                                                            <option value="bCh">Booking Charge</option>
+                                                            <option value="hamali">Hamali</option>
+                                                            <option value="aoc">AOC (Other)</option>
+                                                            <option value="freight">Freight</option>
+                                                            <option value="trCh">Transit Charge</option>
+                                                            <option value="detentionCh">Detention</option>
+                                                        </Select>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    className="w-full"
+                                                    onClick={handleApplyExtraCharge}
+                                                    disabled={!invoice.lorryReceipts?.length || extraCharge.amount <= 0}
+                                                >
+                                                    Distribute ₹{extraCharge.amount || 0} among {selectedLrsCount} LRs
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

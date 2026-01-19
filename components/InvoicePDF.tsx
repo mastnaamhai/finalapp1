@@ -33,18 +33,20 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
 
     const totalPacks = (invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.packages || []).reduce((pkgSum, p) => pkgSum + (p.count || 0), 0), 0);
     const totalWeight = (invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.packages || []).reduce((pkgSum, p) => pkgSum + (p.chargedWeight || 0), 0), 0);
-    // Use auto-calculated freight total if available, otherwise calculate from LRs (includes all charges)
-    const totalFreight = (invoice.lorryReceipts || []).reduce((sum, lr) => {
-        const totalCharges = (lr.charges?.freight || 0) + 
-                            (lr.charges?.aoc || 0) + 
-                            (lr.charges?.hamali || 0) + 
-                            (lr.charges?.bCh || 0) + 
-                            (lr.charges?.trCh || 0) + 
-                            (lr.charges?.detentionCh || 0);
-        return sum + totalCharges;
-    }, 0);
     
-    const subTotal = totalFreight;
+    // Calculate Breakdown of charges from LRs
+    const totalFreightOnly = (invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.charges?.freight || 0), 0);
+    const totalBiltyCharges = (invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.charges?.bCh || 0), 0);
+    const totalOtherCharges = (invoice.lorryReceipts || []).reduce((sum, lr) => {
+        return sum + (lr.charges?.aoc || 0) +
+                    (lr.charges?.hamali || 0) +
+                    (lr.charges?.trCh || 0) +
+                    (lr.charges?.detentionCh || 0);
+    }, 0);
+
+    // totalTaxableAmount is the sum of all charges across all LRs
+    const totalTaxableAmount = totalFreightOnly + totalBiltyCharges + totalOtherCharges;
+    const subTotal = totalTaxableAmount;
     
     // Get the origin location text based on LR data
     const originLocationText = getOriginLocationText(invoice.lorryReceipts || []);
@@ -670,18 +672,51 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                     {/* Total */}
                     <div className="flex justify-end mb-4 no-break">
                         <div className="w-2/5 space-y-1 text-lg">
-                            <div className="flex justify-between">
+                            <div className="flex justify-between border-b border-gray-100 pb-1">
+                                <span className="text-gray-600">Total Freight:</span>
+                                <span>{totalFreightOnly.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            {totalBiltyCharges > 0 && (
+                                <div className="flex justify-between border-b border-gray-100 pb-1">
+                                    <span className="text-gray-600">Booking/Bilty Charges:</span>
+                                    <span>{totalBiltyCharges.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                            )}
+                            {totalOtherCharges > 0 && (
+                                <div className="flex justify-between border-b border-gray-100 pb-1">
+                                    <span className="text-gray-600">Other Charges:</span>
+                                    <span>{totalOtherCharges.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between font-semibold py-1">
                                 <span>Sub Total:</span>
                                 <span>{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
-                            {invoice.isAutoFreightCalculated && (
-                                <div className="flex justify-between text-base text-gray-600">
-                                    <span>Freight (Auto-calculated):</span>
-                                    <span>₹{totalFreight.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
+
+                            {/* GST breakdown if applicable */}
+                            {!invoice.isRcm && (
+                                <>
+                                    {invoice.gstType === GstType.CGST_SGST ? (
+                                        <>
+                                            <div className="flex justify-between text-base text-gray-600">
+                                                <span>CGST ({invoice.cgstRate}%):</span>
+                                                <span>{invoice.cgstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            </div>
+                                            <div className="flex justify-between text-base text-gray-600">
+                                                <span>SGST ({invoice.sgstRate}%):</span>
+                                                <span>{invoice.sgstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="flex justify-between text-base text-gray-600">
+                                            <span>IGST ({invoice.igstRate}%):</span>
+                                            <span>{invoice.igstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                    )}
+                                </>
                             )}
 
-                            <div className="flex justify-between font-bold py-1 text-xl">
+                            <div className="flex justify-between font-bold py-1 text-xl border-t-2 border-black mt-2">
                                 <span>Grand Total:</span>
                                 <span>{(invoice.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>

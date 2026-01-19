@@ -7,29 +7,29 @@ import { LorryReceiptStatus, InvoiceStatus } from '../types';
 import { paginationQuerySchema, createInvoiceSchema, updateInvoiceSchema } from '../utils/validation';
 import mongoose from 'mongoose';
 
-// Helper function to calculate freight total from LRs (includes all charges)
-const calculateFreightTotal = async (lrIds: string[]): Promise<{ freightTotal: number; hasZeroFreight: boolean }> => {
+// Helper function to calculate total charges from LRs (includes freight + all auxiliary charges)
+const calculateTotalChargesFromLrs = async (lrIds: string[]): Promise<{ totalCharges: number; hasZeroFreight: boolean }> => {
   const lrs = await LorryReceipt.find({ _id: { $in: lrIds } });
-  let freightTotal = 0;
+  let totalChargesSum = 0;
   let hasZeroFreight = false;
   
   lrs.forEach(lr => {
-    // Calculate total charges for this LR (freight + all other charges)
-    const totalCharges = (lr.charges?.freight || 0) + 
+    // Calculate total charges for this LR
+    const lrTotal = (lr.charges?.freight || 0) +
                         (lr.charges?.aoc || 0) + 
                         (lr.charges?.hamali || 0) + 
                         (lr.charges?.bCh || 0) + 
                         (lr.charges?.trCh || 0) + 
                         (lr.charges?.detentionCh || 0);
     
-    if (totalCharges > 0) {
-      freightTotal += totalCharges;
+    if (lrTotal > 0) {
+      totalChargesSum += lrTotal;
     } else {
       hasZeroFreight = true;
     }
   });
   
-  return { freightTotal, hasZeroFreight };
+  return { totalCharges: totalChargesSum, hasZeroFreight };
 };
 
 export const getInvoices = asyncHandler(async (req: Request, res: Response) => {
@@ -117,15 +117,15 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
       throw validationError;
     }
     
-    // Calculate freight total from selected LRs
-    const { freightTotal, hasZeroFreight } = await calculateFreightTotal(invoiceData.lorryReceipts);
-    console.log('Calculated freight total:', freightTotal);
+    // Calculate total charges from selected LRs
+    const { totalCharges, hasZeroFreight } = await calculateTotalChargesFromLrs(invoiceData.lorryReceipts);
+    console.log('Calculated total charges from LRs:', totalCharges);
     console.log('Has zero freight LRs:', hasZeroFreight);
     
     // Check if manual freight override is provided
     const manualFreightAmount = invoiceData.freightCharges?.amount || 0;
     const useManualFreight = manualFreightAmount > 0;
-    const finalFreightTotal = useManualFreight ? manualFreightAmount : freightTotal;
+    const finalTaxableTotal = useManualFreight ? manualFreightAmount : totalCharges;
     
     console.log('Manual freight amount:', manualFreightAmount);
     console.log('Using manual freight:', useManualFreight);
@@ -179,7 +179,9 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
       remarks: invoiceData.remarks || '',
       // Auto-calculated freight fields
       isAutoFreightCalculated: !useManualFreight,
-      invoiceFreightTotal: finalFreightTotal,
+      invoiceFreightTotal: finalTaxableTotal,
+      // CRITICAL FIX: Ensure totalAmount used for GST calculation matches the final total
+      totalAmount: finalTaxableTotal,
     };
     
     console.log('Invoice to create:', JSON.stringify(invoiceToCreate, null, 2));
@@ -204,13 +206,31 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
       });
     console.log('Populated Invoice:', populatedInvoice?._id);
 
-    // Update status of associated lorry receipts
-    if (invoiceData.lorryReceipts && invoiceData.lorryReceipts.length > 0) {
+    // Update status and charges of associated lorry receipts
+    if (req.body.lorryReceipts && Array.isArray(req.body.lorryReceipts)) {
+      for (const lrData of req.body.lorryReceipts) {
+        if (lrData._id && lrData.charges) {
+          await LorryReceipt.findByIdAndUpdate(lrData._id, {
+            $set: {
+              status: LorryReceiptStatus.INVOICED,
+              charges: lrData.charges,
+              totalAmount: (lrData.charges.freight || 0) +
+                          (lrData.charges.aoc || 0) +
+                          (lrData.charges.hamali || 0) +
+                          (lrData.charges.bCh || 0) +
+                          (lrData.charges.trCh || 0) +
+                          (lrData.charges.detentionCh || 0)
+            }
+          });
+        }
+      }
+      console.log('Updated LR statuses and charges for invoice');
+    } else if (invoiceData.lorryReceipts && invoiceData.lorryReceipts.length > 0) {
       await LorryReceipt.updateMany(
         { _id: { $in: invoiceData.lorryReceipts } },
         { $set: { status: LorryReceiptStatus.INVOICED } }
       );
-      console.log('Updated LR statuses for invoice');
+      console.log('Updated LR statuses for invoice (fallback)');
     }
 
     res.status(201).json(populatedInvoice || createdInvoice);
@@ -287,9 +307,11 @@ export const updateInvoice = asyncHandler(async (req: Request, res: Response) =>
 
     // Calculate freight total if LRs are being updated
     if (invoiceData.lorryReceipts) {
-      const { freightTotal } = await calculateFreightTotal(invoiceData.lorryReceipts);
+      const { totalCharges } = await calculateTotalChargesFromLrs(invoiceData.lorryReceipts);
       invoiceData.isAutoFreightCalculated = true;
-      invoiceData.invoiceFreightTotal = freightTotal;
+      invoiceData.invoiceFreightTotal = totalCharges;
+      // CRITICAL FIX: Update totalAmount to match new LR sum
+      invoiceData.totalAmount = totalCharges;
     }
 
     Object.assign(invoice, invoiceData);
@@ -297,13 +319,33 @@ export const updateInvoice = asyncHandler(async (req: Request, res: Response) =>
 
     const newLrIds = updatedInvoice.lorryReceipts.map(lr => lr.toString());
 
-    // LRs to be marked as invoiced
-    const toInvoice = newLrIds.filter(id => !originalLrIds.includes(id));
-    if (toInvoice.length > 0) {
-      await LorryReceipt.updateMany(
-        { _id: { $in: toInvoice } },
-        { $set: { status: LorryReceiptStatus.INVOICED } }
-      );
+    // Update charges and status for all currently selected LRs
+    if (req.body.lorryReceipts && Array.isArray(req.body.lorryReceipts)) {
+      for (const lrData of req.body.lorryReceipts) {
+        if (lrData._id && lrData.charges) {
+          await LorryReceipt.findByIdAndUpdate(lrData._id, {
+            $set: {
+              status: LorryReceiptStatus.INVOICED,
+              charges: lrData.charges,
+              totalAmount: (lrData.charges.freight || 0) +
+                          (lrData.charges.aoc || 0) +
+                          (lrData.charges.hamali || 0) +
+                          (lrData.charges.bCh || 0) +
+                          (lrData.charges.trCh || 0) +
+                          (lrData.charges.detentionCh || 0)
+            }
+          });
+        }
+      }
+    } else {
+      // Fallback for simple ID array
+      const toInvoice = newLrIds.filter(id => !originalLrIds.includes(id));
+      if (toInvoice.length > 0) {
+        await LorryReceipt.updateMany(
+          { _id: { $in: toInvoice } },
+          { $set: { status: LorryReceiptStatus.INVOICED } }
+        );
+      }
     }
 
     // LRs to be marked as created (or other status)
