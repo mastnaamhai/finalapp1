@@ -27,7 +27,7 @@ export const SimpleNumberingSettings: React.FC = () => {
     setIsLoading(true);
     try {
       // First sync current numbers with existing data
-      await fetch(`${API_BASE_URL}/api/numbering/sync-current`, {
+      await fetch(`${API_BASE_URL}/numbering/sync-current`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

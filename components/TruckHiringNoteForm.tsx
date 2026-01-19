@@ -224,7 +224,7 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
                                     <AutocompleteInput
                                         name="loadingLocation"
                                         value={typeof note.loadingLocation === 'string' ? note.loadingLocation : ''}
-                                        onChange={(value) => handleValueChange('loadingLocation', value)}
+                                        onChange={handleChange}
                                         suggestions={commonCitiesOptions}
                                         placeholder="Enter Loading Location"
                                     />
@@ -236,7 +236,7 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
                                     <AutocompleteInput
                                         name="unloadingLocation"
                                         value={typeof note.unloadingLocation === 'string' ? note.unloadingLocation : ''}
-                                        onChange={(value) => handleValueChange('unloadingLocation', value)}
+                                        onChange={handleChange}
                                         suggestions={commonCitiesOptions}
                                         placeholder="Enter Unloading Location"
                                     />

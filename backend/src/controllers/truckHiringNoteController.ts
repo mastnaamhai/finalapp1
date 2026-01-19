@@ -94,7 +94,8 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
       additionalCharges: noteData.additionalCharges || 0,
       status: initialStatus,
       paidAmount: advanceAmount, // Set paidAmount to include advance payment
-      payments: []
+      payments: [],
+      paymentTerms: noteData.paymentTerms || ''
     });
 
     const newNote = await note.save();
@@ -121,7 +122,7 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
           date: noteData.date,
           amount: advanceAmount,
           type: PaymentType.ADVANCE,
-          mode: noteData.paymentMode as PaymentMode || PaymentMode.CASH,
+          mode: PaymentMode.CASH, // Default to CASH since paymentMode field was removed
           referenceNo: `THN-${newNote.thnNumber}-ADVANCE`,
           notes: `Advance payment for THN #${newNote.thnNumber}`
         });
@@ -255,7 +256,7 @@ export const updateTruckHiringNote = asyncHandler(async (req: Request, res: Resp
               date: updateData.date || existingNote.date,
               amount: advanceAmount,
               type: PaymentType.ADVANCE,
-              mode: (updateData.paymentMode || existingNote.paymentMode) as PaymentMode || PaymentMode.CASH,
+              mode: PaymentMode.CASH, // Default to CASH since paymentMode field was removed
               referenceNo: `THN-${existingNote.thnNumber}-ADVANCE`,
               notes: `Advance payment for THN #${existingNote.thnNumber}`
             });

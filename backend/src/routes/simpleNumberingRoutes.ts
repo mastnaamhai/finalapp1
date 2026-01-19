@@ -198,13 +198,20 @@ router.post('/sync-current', async (req: Request, res: Response) => {
       { $group: { _id: null, maxNumber: { $max: '$thnNumber' } } }
     ]);
 
+    console.log('Sync debug:', {
+      maxInvoice: maxInvoice?.maxNumber || 0,
+      maxLr: maxLr?.maxNumber || 0,
+      maxThn: maxThn?.maxNumber || 0
+    });
+
     const updates = [];
 
     // Update invoice config
     const invoiceMax = maxInvoice?.maxNumber || 0;
     const invoiceConfig = await NumberingConfig.findOne({ type: 'invoice' });
     if (invoiceConfig) {
-      const newCurrent = Math.max(invoiceConfig.currentNumber, invoiceMax + 1);
+      const newCurrent = invoiceMax > 0 ? invoiceMax + 1 : invoiceConfig.startingNumber;
+      console.log('Invoice sync:', { current: invoiceConfig.currentNumber, max: invoiceMax, newCurrent });
       invoiceConfig.currentNumber = newCurrent;
       updates.push(invoiceConfig.save());
     }
@@ -213,7 +220,8 @@ router.post('/sync-current', async (req: Request, res: Response) => {
     const lrMax = maxLr?.maxNumber || 0;
     const lrConfig = await NumberingConfig.findOne({ type: 'consignment' });
     if (lrConfig) {
-      const newCurrent = Math.max(lrConfig.currentNumber, lrMax + 1);
+      const newCurrent = lrMax > 0 ? lrMax + 1 : lrConfig.startingNumber;
+      console.log('LR sync:', { current: lrConfig.currentNumber, max: lrMax, newCurrent });
       lrConfig.currentNumber = newCurrent;
       updates.push(lrConfig.save());
     }
@@ -222,7 +230,8 @@ router.post('/sync-current', async (req: Request, res: Response) => {
     const thnMax = maxThn?.maxNumber || 0;
     const thnConfig = await NumberingConfig.findOne({ type: 'truckHiringNoteId' });
     if (thnConfig) {
-      const newCurrent = Math.max(thnConfig.currentNumber, thnMax + 1);
+      const newCurrent = thnMax > 0 ? thnMax + 1 : thnConfig.startingNumber;
+      console.log('THN sync:', { current: thnConfig.currentNumber, max: thnMax, newCurrent });
       thnConfig.currentNumber = newCurrent;
       updates.push(thnConfig.save());
     }
