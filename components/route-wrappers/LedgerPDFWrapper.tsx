@@ -92,7 +92,7 @@ export const LedgerPDFWrapper: React.FC = () => {
     const thnTxComp = context.truckHiringNotes.map((thn: any) => ({ 
       type: 'expense', 
       date: thn.date, 
-      particulars: `THN No: THN-${thn.thnNumber} - Freight payment to ${thn.truckOwnerName} (Route: ${thn.loadingLocation} to ${thn.unloadingLocation})`, 
+      particulars: `THN No: THN-${thn.thnNumber} - Freight payment to ${thn.agencyName} (Route: ${thn.loadingLocation} to ${thn.unloadingLocation})`,
       amount: thn.freightRate 
     }));
     

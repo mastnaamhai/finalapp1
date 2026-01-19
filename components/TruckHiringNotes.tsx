@@ -52,7 +52,7 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
     const sortOptions: SortOption[] = [
         { value: 'thnNumber', label: 'Sort by THN Number' },
         { value: 'date', label: 'Sort by Date' },
-        { value: 'truckOwnerName', label: 'Sort by Owner' },
+        { value: 'agencyName', label: 'Sort by Broker' },
         { value: 'truckNumber', label: 'Sort by Truck Number' },
         { value: 'truckType', label: 'Sort by Truck Type' },
         { value: 'loadingLocation', label: 'Sort by Loading Location' },
@@ -68,12 +68,12 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
             const searchLower = searchTerm.toLowerCase();
             const matchesSearch = searchTerm === '' ||
                 note.thnNumber.toString().includes(searchTerm) ||
-                note.truckOwnerName.toLowerCase().includes(searchLower) ||
+                note.agencyName.toLowerCase().includes(searchLower) ||
                 note.truckNumber.toLowerCase().includes(searchLower) ||
                 note.loadingLocation.toLowerCase().includes(searchLower) ||
                 note.unloadingLocation.toLowerCase().includes(searchLower) ||
-                note.goodsType.toLowerCase().includes(searchLower) ||
-                note.truckType.toLowerCase().includes(searchLower) ||
+                note.goodsType?.toLowerCase().includes(searchLower) ||
+                note.truckType?.toLowerCase().includes(searchLower) ||
                 note.status.toLowerCase().includes(searchLower);
 
             return matchesSearch;
@@ -93,9 +93,9 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
                     aValue = new Date(a.date);
                     bValue = new Date(b.date);
                     break;
-                case 'truckOwnerName':
-                    aValue = a.truckOwnerName.toLowerCase();
-                    bValue = b.truckOwnerName.toLowerCase();
+                case 'agencyName':
+                    aValue = a.agencyName.toLowerCase();
+                    bValue = b.agencyName.toLowerCase();
                     break;
                 case 'truckNumber':
                     aValue = a.truckNumber.toLowerCase();
@@ -267,7 +267,7 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
                 <UniversalSearchSort
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}
-                    searchPlaceholder="Search by THN number, owner name, truck number, locations, goods type, truck type, or status..."
+                    searchPlaceholder="Search by THN number, broker name, truck number, locations, or status..."
                     sortBy={sortBy}
                     onSortChange={setSortBy}
                     sortOrder={sortOrder}
@@ -288,7 +288,7 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
                                 <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                 <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Truck Details</th>
                                 <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Route</th>
-                                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
+                                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Broker</th>
                                 <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Freight</th>
                                 <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Advance</th>
                                 <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Paid</th>
@@ -324,9 +324,9 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                                         <div>
-                                            <div className="font-medium">{note.truckOwnerName}</div>
-                                            {note.truckOwnerContact && (
-                                                <div className="text-xs text-gray-400">{note.truckOwnerContact}</div>
+                                            <div className="font-medium">{note.agencyName}</div>
+                                            {note.brokerContact && (
+                                                <div className="text-xs text-gray-400">{note.brokerContact}</div>
                                             )}
                                         </div>
                                     </td>

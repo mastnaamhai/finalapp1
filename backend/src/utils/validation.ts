@@ -105,13 +105,13 @@ export const createPaymentSchema = z.object({
 }).refine(data => data.invoiceId ? (data.customer && data.customer.trim().length > 0) : true, {
   message: 'Customer is required for invoice payments',
 }).refine(data => {
-  // TDS can only be applied to Receipts
-  if (data.tdsApplicable && data.type !== PaymentType.RECEIPT) {
+  // TDS can only be applied to Advances (Invoices)
+  if (data.tdsApplicable && data.type !== PaymentType.ADVANCE) {
     return false;
   }
   return true;
 }, {
-  message: 'TDS can only be applied to Receipts',
+  message: 'TDS can only be applied to Advances',
 }).refine(data => {
   // If TDS is applicable, rate is required
   if (data.tdsApplicable && (data.tdsRate === undefined || data.tdsRate === null)) {
@@ -133,7 +133,7 @@ export const createTruckHiringNoteSchema = z.object({
   loadingLocation: z.string().optional(),
   unloadingLocation: z.string().optional(),
   agencyName: z.string().min(1),
-  truckOwnerContact: z.string().optional(),
+  brokerContact: z.string().optional(),
   freightRate: z.number().nonnegative(),
   advanceAmount: z.number().nonnegative().optional(),
   paymentTerms: z.string().optional(),
@@ -141,6 +141,8 @@ export const createTruckHiringNoteSchema = z.object({
   remarks: z.string().optional(),
   linkedLR: z.string().optional(),
   linkedInvoice: z.string().optional(),
+  goodsType: z.string().optional(),
+  truckType: z.string().optional(),
 });
 
 export const updateTruckHiringNoteSchema = createTruckHiringNoteSchema.partial();

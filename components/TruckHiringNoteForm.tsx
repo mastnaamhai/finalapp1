@@ -30,7 +30,7 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
         unloadingLocation: '',
         expectedDeliveryDate: '',
         agencyName: '',
-        truckOwnerContact: '',
+        brokerContact: '',
         freightRate: 0,
         advanceAmount: 0,
         remarks: '',

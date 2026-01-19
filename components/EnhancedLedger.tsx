@@ -223,13 +223,13 @@ export const EnhancedLedger: React.FC<EnhancedLedgerProps> = (props) => {
                 <h4 className="font-semibold text-blue-800">{clientLedgerData.customerName}</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                   <div>
-                    <span className="text-sm text-gray-600">Total Debits:</span>
+                    <span className="text-sm text-gray-600">Total Debits (+):</span>
                     <p className="font-semibold text-red-600">
                       {LedgerService.formatCurrency(clientLedgerData.summary.totalDebits)}
                     </p>
                   </div>
                   <div>
-                    <span className="text-sm text-gray-600">Total Credits:</span>
+                    <span className="text-sm text-gray-600">Total Credits (-):</span>
                     <p className="font-semibold text-green-600">
                       {LedgerService.formatCurrency(clientLedgerData.summary.totalCredits)}
                     </p>
@@ -254,8 +254,8 @@ export const EnhancedLedger: React.FC<EnhancedLedgerProps> = (props) => {
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Particulars</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Debit</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Credit</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase text-red-600">Debit (+)</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase text-green-600">Credit (-)</th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Balance</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
                     </tr>

@@ -32,7 +32,6 @@ export enum THNStatus {
 
 export enum PaymentType {
   ADVANCE = 'Advance',
-  RECEIPT = 'Receipt',
   PAYMENT = 'Payment',
 }
 
@@ -203,7 +202,7 @@ export interface TruckHiringNote {
   loadingDateTime?: string;
   expectedDeliveryDate?: string;
   agencyName: string;
-  truckOwnerContact?: string;
+  brokerContact?: string;
   freightRate: number;
   advanceAmount: number;
   balanceAmount: number;
@@ -212,6 +211,8 @@ export interface TruckHiringNote {
   remarks?: string;
   linkedLR?: string;
   linkedInvoice?: string;
+  goodsType: string;
+  truckType: string;
   status: THNStatus;
   paidAmount: number;
   payments: Payment[];
@@ -283,7 +284,7 @@ export interface LedgerTransaction {
   _id: string;
   date: string;
   voucherNumber?: string;
-  voucherType: 'INVOICE' | 'PAYMENT' | 'ADVANCE' | 'RECEIPT' | 'JOURNAL' | 'THN';
+  voucherType: 'INVOICE' | 'PAYMENT' | 'ADVANCE' | 'JOURNAL' | 'THN';
   particulars: string;
   debit: number;
   credit: number;
@@ -302,7 +303,7 @@ export interface LedgerTransaction {
 export interface ClientLedgerEntry {
   date: string;
   voucherNumber?: string;
-  voucherType: 'INVOICE' | 'PAYMENT' | 'ADVANCE' | 'RECEIPT';
+  voucherType: 'INVOICE' | 'PAYMENT' | 'ADVANCE';
   particulars: string;
   debit: number;
   credit: number;

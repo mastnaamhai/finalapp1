@@ -47,7 +47,7 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
         ...(customerId && { customer: customerId }), // Keep customer field for backend compatibility
         amount: Math.abs(balanceDue), // Use absolute value for payment amount (gross amount)
         date: getCurrentDate(),
-        type: PaymentType.RECEIPT,
+        type: isForInvoice ? PaymentType.ADVANCE : PaymentType.PAYMENT,
         mode: PaymentMode.CASH,
         referenceNo: '',
         notes: '',
@@ -90,7 +90,7 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
         notes: fieldRules.notes,
         tdsRate: {
             custom: (value: number) => {
-                if (payment.tdsApplicable && payment.type === PaymentType.RECEIPT) {
+                if (payment.tdsApplicable && payment.type === PaymentType.ADVANCE) {
                     if (!value || value <= 0 || value > 100) {
                         return 'TDS rate must be between 0.01% and 100%';
                     }
@@ -167,7 +167,7 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
             };
 
             // Clear TDS fields if not applicable
-            if (!payment.tdsApplicable || payment.type !== PaymentType.RECEIPT) {
+            if (!payment.tdsApplicable || payment.type !== PaymentType.ADVANCE) {
                 delete paymentToSave.tdsApplicable;
                 delete paymentToSave.tdsRate;
                 delete paymentToSave.tdsAmount;
@@ -296,7 +296,6 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
                                     onValueChange={(value) => handleValueChange('type', value)}
                                     required
                                 >
-                                    <option value={PaymentType.RECEIPT}>Receipt</option>
                                     <option value={PaymentType.ADVANCE}>Advance</option>
                                     <option value={PaymentType.PAYMENT}>Payment</option>
                                 </ValidatedSelect>
@@ -332,8 +331,8 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
                                 />
                             )}
 
-                            {/* TDS Section - Only for Receipts */}
-                            {payment.type === PaymentType.RECEIPT && (
+                            {/* TDS Section - Only for Advances (Invoices) */}
+                            {payment.type === PaymentType.ADVANCE && (
                                 <FormSection title="TDS (Tax Deducted at Source)">
                                     <div className="space-y-4">
                                         <div className="flex items-center">

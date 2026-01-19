@@ -112,7 +112,7 @@ export const createPayment = asyncHandler(async (req: Request, res: Response) =>
     let tdsAmount = paymentData.tdsAmount;
     let tdsDate = paymentData.tdsDate || paymentData.date;
 
-    if (paymentData.tdsApplicable && paymentData.type === PaymentType.RECEIPT) {
+    if (paymentData.tdsApplicable && paymentData.type === PaymentType.ADVANCE) {
       // Validate TDS rate is provided
       if (!paymentData.tdsRate && paymentData.tdsRate !== 0) {
         res.status(400).json({
@@ -227,7 +227,7 @@ export const updatePayment = asyncHandler(async (req: Request, res: Response) =>
   // Handle TDS calculation for updates (Option 3a: TDS deducted from payment amount)
   let updateData: any = { ...paymentData };
   
-  if (paymentData.tdsApplicable !== undefined && paymentData.tdsApplicable && paymentData.type === PaymentType.RECEIPT) {
+  if (paymentData.tdsApplicable !== undefined && paymentData.tdsApplicable && paymentData.type === PaymentType.ADVANCE) {
     // Validate TDS rate is provided
     if (paymentData.tdsRate === undefined && paymentData.tdsRate !== 0) {
       res.status(400).json({

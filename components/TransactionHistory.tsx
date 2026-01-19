@@ -244,7 +244,7 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                       payment.type === 'Advance' ? 'bg-blue-100 text-blue-800' :
-                      payment.type === 'Receipt' ? 'bg-green-100 text-green-800' :
+                       payment.type === 'Payment' ? 'bg-green-100 text-green-800' :
                       'bg-purple-100 text-purple-800'
                     }`}>
                       {payment.type}

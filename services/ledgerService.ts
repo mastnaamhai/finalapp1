@@ -39,15 +39,36 @@ export class LedgerService {
       if ((p as any).customerId === customerId) return true;
       return ((p as any).customer?._id === customerId);
     });
-    const customerTHNs = truckHiringNotes.filter(thn => thn.truckOwnerName === customer.name);
+    const customerTHNs = truckHiringNotes.filter(thn => thn.agencyName === customer.name);
 
-    console.log(`Customer has ${customerInvoices.length} invoices, ${customerPayments.length} payments`);
+    console.log(`Customer has ${customerInvoices.length} invoices, ${customerPayments.length} payments, ${customerTHNs.length} THNs`);
 
     // Calculate opening balance from transactions before start date
-    const openingBalance = this.calculateOpeningBalance(customerId, customerInvoices, customerPayments, startDate);
+    const openingBalance = this.calculateOpeningBalance(customerId, customerInvoices, customerPayments, startDate, customerTHNs);
 
     // Generate ledger entries for the period
     const entries: ClientLedgerEntry[] = [];
+
+    // Process THNs for this broker/client (CREDIT to broker, they performed a service)
+    customerTHNs.forEach(thn => {
+      const thnDate = new Date(thn.date);
+      if (!startDate || thnDate >= startDate) {
+        if (!endDate || thnDate <= endDate) {
+          entries.push({
+            date: thn.date,
+            voucherNumber: `THN-${thn.thnNumber}`,
+            voucherType: 'PAYMENT' as any, // Treat as a liability record
+            particulars: `Truck Hire: THN-${thn.thnNumber} - ${thn.loadingLocation} to ${thn.unloadingLocation}`,
+            debit: 0,
+            credit: thn.freightRate + (thn.additionalCharges || 0),
+            balance: 0,
+            balanceType: 'CR',
+            reference: `THN-${thn.thnNumber}`,
+            notes: thn.remarks || undefined
+          });
+        }
+      }
+    });
 
     // Process invoices in the period (debit entries for receivables)
     customerInvoices.forEach(invoice => {
@@ -75,21 +96,25 @@ export class LedgerService {
       const paymentDate = new Date(payment.date);
       if (!startDate || paymentDate >= startDate) {
         if (!endDate || paymentDate <= endDate) {
-          const paymentType = payment.type === PaymentType.ADVANCE ? 'ADVANCE' : 'PAYMENT';
           const particulars = this.getPaymentParticulars(payment, customerInvoices, customerTHNs);
 
-          // For advances, treat as credit to customer (reduces receivable balance)
-          // For receipts/payments, also treat as credit but track settlement
+          // Determine if it's a payment from client (Credit) or to broker (Debit)
+          // Money IN (Advance for Invoice) = Credit to Client
+          // Money OUT (Payment/Advance for THN) = Debit to Broker
+          const isMoneyOut = !!payment.truckHiringNoteId;
+          const isMoneyIn = !!payment.invoiceId || (!payment.truckHiringNoteId && (payment.type === PaymentType.ADVANCE || (payment.type as any) === 'Receipt'));
+
           entries.push({
             date: payment.date,
             voucherNumber: payment.referenceNo || `PAY-${payment._id.slice(-6)}`,
-            voucherType: paymentType as any,
+            voucherType: payment.type as any,
             particulars,
-            debit: 0,
-            credit: payment.amount, // All payments reduce customer balance
+            debit: isMoneyOut ? payment.amount : 0,
+            credit: isMoneyIn ? payment.amount : 0,
             balance: 0, // Will be calculated later
-            balanceType: 'CR',
-            reference: payment.invoiceId ? `INV-${typeof payment.invoiceId === 'string' ? payment.invoiceId : (payment.invoiceId as Invoice).invoiceNumber}` : undefined,
+            balanceType: isMoneyIn ? 'CR' : 'DR',
+            reference: payment.invoiceId ? `INV-${typeof payment.invoiceId === 'string' ? payment.invoiceId : (payment.invoiceId as Invoice).invoiceNumber}` :
+                      payment.truckHiringNoteId ? `THN-${typeof payment.truckHiringNoteId === 'string' ? payment.truckHiringNoteId : (payment.truckHiringNoteId as TruckHiringNote).thnNumber}` : undefined,
             paymentMode: payment.mode,
             notes: payment.notes || undefined
           });
@@ -148,7 +173,8 @@ export class LedgerService {
     customerId: string,
     allInvoices: Invoice[],
     allPayments: Payment[],
-    startDate: Date | null
+    startDate: Date | null,
+    allTHNs: TruckHiringNote[] = []
   ): { amount: number; type: 'DR' | 'CR' } {
     if (!startDate) {
       return { amount: 0, type: 'DR' };
@@ -163,10 +189,21 @@ export class LedgerService {
       }
     });
 
-    // Subtract all payments before start date (reduces receivables - CR)
+    // Handle payments before start date
     allPayments.forEach(payment => {
       if (new Date(payment.date) < startDate) {
-        balance -= payment.amount;
+        const isMoneyOut = !!payment.truckHiringNoteId;
+        const isMoneyIn = !!payment.invoiceId || (!payment.truckHiringNoteId && (payment.type === PaymentType.ADVANCE || (payment.type as any) === 'Receipt'));
+
+        if (isMoneyIn) balance -= payment.amount;
+        if (isMoneyOut) balance += payment.amount;
+      }
+    });
+
+    // Handle THNs before start date (reduces receivables/increases payables - CR)
+    allTHNs.forEach(thn => {
+      if (new Date(thn.date) < startDate) {
+        balance -= (thn.freightRate + (thn.additionalCharges || 0));
       }
     });
 
@@ -190,171 +227,35 @@ export class LedgerService {
     const startDate = filters?.startDate || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const endDate = filters?.endDate || new Date().toISOString().split('T')[0];
 
-    // Calculate opening balance from all transactions before the period
-    const beforeEntries: CompanyLedgerEntry[] = [];
-
-    // Process invoices before period
-    invoices.forEach(invoice => {
-      if (new Date(invoice.date) < new Date(startDate)) {
-        beforeEntries.push(
-          {
-            date: invoice.date,
-            particulars: `Opening - Invoice No: INV-${invoice.invoiceNumber} - Sales`,
-            debit: 0,
-            credit: invoice.grandTotal,
-            balance: 0,
-            balanceType: 'CR',
-            reference: `INV-${invoice.invoiceNumber}`,
-            customerName: invoice.customer?.name,
-            notes: invoice.remarks || undefined
-          },
-          {
-            date: invoice.date,
-            particulars: `Opening - Invoice No: INV-${invoice.invoiceNumber} - Receivables`,
-            debit: invoice.grandTotal,
-            credit: 0,
-            balance: 0,
-            balanceType: 'DR',
-            reference: `INV-${invoice.invoiceNumber}`,
-            customerName: invoice.customer?.name,
-            notes: invoice.remarks || undefined
-          }
-        );
-      }
-    });
-
-    // Process payments before period
-    payments.forEach(payment => {
-      if (new Date(payment.date) < new Date(startDate)) {
-        if (payment.type === PaymentType.ADVANCE) {
-          beforeEntries.push(
-            {
-              date: payment.date,
-              particulars: `Opening - Advance received from ${payment.customer?.name || 'Unknown Customer'}`,
-              debit: 0,
-              credit: payment.amount,
-              balance: 0,
-              balanceType: 'CR',
-              reference: payment.referenceNo || payment._id.slice(-6),
-              customerName: payment.customer?.name,
-              notes: payment.notes || `Payment Mode: ${payment.mode}`
-            },
-            {
-              date: payment.date,
-              particulars: `Opening - Cash/Bank (Advance)`,
-              debit: payment.amount,
-              credit: 0,
-              balance: 0,
-              balanceType: 'DR',
-              reference: payment.referenceNo || payment._id.slice(-6),
-              customerName: payment.customer?.name,
-              notes: payment.notes || `Payment Mode: ${payment.mode}`
-            }
-          );
-        } else if (payment.type === PaymentType.RECEIPT) {
-          const hasTDS = payment.tdsApplicable && payment.tdsAmount && payment.tdsAmount > 0;
-          const grossAmount = hasTDS ? (payment.amount + payment.tdsAmount!) : payment.amount;
-          const netAmount = payment.amount;
-
-          beforeEntries.push(
-            {
-              date: payment.date,
-              particulars: `Opening - Cash/Bank received`,
-              debit: netAmount,
-              credit: 0,
-              balance: 0,
-              balanceType: 'DR',
-              reference: payment.referenceNo || payment._id.slice(-6),
-              customerName: payment.customer?.name,
-              notes: hasTDS ? `${payment.notes || ''} TDS: ₹${payment.tdsAmount}` : payment.notes || `Payment Mode: ${payment.mode}`
-            }
-          );
-
-          if (hasTDS) {
-            beforeEntries.push({
-              date: payment.tdsDate || payment.date,
-              particulars: `Opening - TDS Payable`,
-              debit: 0,
-              credit: payment.tdsAmount!,
-              balance: 0,
-              balanceType: 'CR',
-              reference: payment.referenceNo || payment._id.slice(-6),
-              customerName: payment.customer?.name,
-              notes: `TDS @ ${payment.tdsRate}%`
-            });
-          }
-
-          beforeEntries.push({
-            date: payment.date,
-            particulars: `Opening - Accounts Receivable reduction`,
-            debit: 0,
-            credit: grossAmount,
-            balance: 0,
-            balanceType: 'CR',
-            reference: payment.invoiceId ? `INV-${typeof payment.invoiceId === 'string' ? payment.invoiceId : (payment.invoiceId as Invoice).invoiceNumber}` : undefined,
-            customerName: payment.customer?.name,
-            notes: payment.notes || `Payment Mode: ${payment.mode}`
-          });
-        } else if (payment.type === PaymentType.PAYMENT) {
-          // Opening balance for payments made
-          beforeEntries.push({
-            date: payment.date,
-            particulars: `Opening - Payment made to ${payment.customer?.name || 'Unknown Vendor'}${payment.truckHiringNoteId ? ` for THN-${typeof payment.truckHiringNoteId === 'string' ? payment.truckHiringNoteId : (payment.truckHiringNoteId as TruckHiringNote).thnNumber}` : ''}`,
-            debit: payment.amount,
-            credit: 0,
-            balance: 0,
-            balanceType: 'DR',
-            reference: payment.referenceNo || payment._id.slice(-6),
-            customerName: payment.customer?.name,
-            notes: payment.notes || `Payment Mode: ${payment.mode}`
-          });
-        }
-      }
-    });
-
-    // Process THNs before period
-    truckHiringNotes.forEach(thn => {
-      if (new Date(thn.date) < new Date(startDate)) {
-        beforeEntries.push(
-          {
-            date: thn.date,
-            particulars: `Opening - Freight Expense THN-${thn.thnNumber}`,
-            debit: thn.freightRate,
-            credit: 0,
-            balance: 0,
-            balanceType: 'DR',
-            reference: `THN-${thn.thnNumber}`,
-            customerName: thn.truckOwnerName,
-            notes: `Route: ${thn.loadingLocation} to ${thn.unloadingLocation}`
-          },
-          {
-            date: thn.date,
-            particulars: `Opening - Cash/Bank payment for THN`,
-            debit: 0,
-            credit: thn.freightRate,
-            balance: 0,
-            balanceType: 'CR',
-            reference: `THN-${thn.thnNumber}`,
-            customerName: thn.truckOwnerName,
-            notes: `Route: ${thn.loadingLocation} to ${thn.unloadingLocation}`
-          }
-        );
-      }
-    });
-
-    // Calculate opening balance
+    // 1. Calculate Opening Balance from all transactions BEFORE startDate
     let openingBalanceAmount = 0;
-    beforeEntries.forEach(entry => {
-      openingBalanceAmount += (entry.debit - entry.credit);
+
+    invoices.forEach(inv => {
+      if (new Date(inv.date) < new Date(startDate)) openingBalanceAmount += inv.grandTotal;
     });
 
-    // Process invoices (debtors - money expected from customers)
+    truckHiringNotes.forEach(thn => {
+      if (new Date(thn.date) < new Date(startDate)) openingBalanceAmount -= (thn.freightRate + (thn.additionalCharges || 0));
+    });
+
+    payments.forEach(p => {
+      if (new Date(p.date) < new Date(startDate)) {
+        const isMoneyOut = !!p.truckHiringNoteId;
+        const isMoneyIn = !!p.invoiceId || (!p.truckHiringNoteId && (p.type === PaymentType.ADVANCE || (p.type as any) === 'Receipt'));
+        if (isMoneyIn) openingBalanceAmount -= p.amount;
+        if (isMoneyOut) openingBalanceAmount += p.amount;
+
+        if (p.tdsAmount) openingBalanceAmount -= p.tdsAmount;
+      }
+    });
+
+    // 2. Process transactions within the period
     invoices.forEach(invoice => {
-      if (new Date(invoice.date) >= new Date(startDate) && new Date(invoice.date) <= new Date(endDate)) {
-        // Pending Payment/Receivable (Debit - money owed to company)
+      const invoiceDate = new Date(invoice.date);
+      if (invoiceDate >= new Date(startDate) && invoiceDate <= new Date(endDate)) {
         entries.push({
           date: invoice.date,
-          particulars: `Invoice No: INV-${invoice.invoiceNumber} - Pending Payment - ${invoice.customer?.name || 'Unknown Customer'}`,
+          particulars: `Invoice: INV-${invoice.invoiceNumber} - ${invoice.customer?.name || 'Unknown Customer'}`,
           debit: invoice.grandTotal,
           credit: 0,
           balance: 0,
@@ -366,99 +267,63 @@ export class LedgerService {
       }
     });
 
-    // Process payments
+    truckHiringNotes.forEach(thn => {
+      const thnDate = new Date(thn.date);
+      if (thnDate >= new Date(startDate) && thnDate <= new Date(endDate)) {
+        entries.push({
+          date: thn.date,
+          particulars: `Truck Hire: THN-${thn.thnNumber} - ${thn.agencyName} (${thn.loadingLocation} to ${thn.unloadingLocation})`,
+          debit: 0,
+          credit: thn.freightRate + (thn.additionalCharges || 0),
+          balance: 0,
+          balanceType: 'CR',
+          reference: `THN-${thn.thnNumber}`,
+          customerName: thn.agencyName,
+          notes: thn.remarks || undefined
+        });
+      }
+    });
+
     payments.forEach(payment => {
-      if (new Date(payment.date) >= new Date(startDate) && new Date(payment.date) <= new Date(endDate)) {
-        if (payment.type === PaymentType.ADVANCE) {
-          // Advance Received (Credit - reduces positive receivables balance)
-          entries.push({
-            date: payment.date,
-            particulars: `Advance received from ${payment.customer?.name || 'Unknown Customer'} (Ref: ${payment.referenceNo || payment._id.slice(-6)})`,
+      const paymentDate = new Date(payment.date);
+      if (paymentDate >= new Date(startDate) && paymentDate <= new Date(endDate)) {
+        const isMoneyOut = !!payment.truckHiringNoteId;
+        const isMoneyIn = !!payment.invoiceId || (!payment.truckHiringNoteId && (payment.type === PaymentType.ADVANCE || (payment.type as any) === 'Receipt'));
+
+        entries.push({
+          date: payment.date,
+          particulars: `${payment.type} ${isMoneyIn ? 'from' : 'to'} ${payment.customer?.name || (payment as any).agencyName || 'Broker/Client'} (Ref: ${payment.referenceNo || 'N/A'})`,
+          debit: isMoneyOut ? payment.amount : 0,
+          credit: isMoneyIn ? payment.amount : 0,
+          balance: 0,
+          balanceType: isMoneyIn ? 'CR' : 'DR',
+          reference: payment.referenceNo,
+          customerName: payment.customer?.name,
+          notes: payment.notes || `Mode: ${payment.mode}`
+        });
+
+        if (payment.tdsAmount && payment.tdsAmount > 0) {
+           entries.push({
+            date: payment.tdsDate || payment.date,
+            particulars: `TDS Deducted for ${payment.referenceNo || 'Payment'}`,
             debit: 0,
-            credit: payment.amount,
+            credit: payment.tdsAmount,
             balance: 0,
             balanceType: 'CR',
-            reference: payment.referenceNo || payment._id.slice(-6),
+            reference: payment.referenceNo,
             customerName: payment.customer?.name,
-            notes: payment.notes || `Payment Mode: ${payment.mode}`
-          });
-        } else if (payment.type === PaymentType.RECEIPT) {
-          // Handle TDS for Receipts
-          const hasTDS = payment.tdsApplicable && payment.tdsAmount && payment.tdsAmount > 0;
-          const grossAmount = hasTDS ? (payment.amount + payment.tdsAmount!) : payment.amount;
-
-          // Payment Received (Credit - reduces pending receivables)
-          entries.push({
-            date: payment.date,
-            particulars: `Payment received from ${payment.customer?.name || 'Unknown Customer'}${payment.invoiceId ? ` for INV-${typeof payment.invoiceId === 'string' ? payment.invoiceId : (payment.invoiceId as Invoice).invoiceNumber}` : ''}${hasTDS ? ` (Net: ₹${payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}, TDS: ₹${payment.tdsAmount!.toLocaleString('en-IN', { minimumFractionDigits: 2 })})` : ''}`,
-            debit: 0,
-            credit: grossAmount,
-            balance: 0,
-            balanceType: 'CR',
-            reference: payment.referenceNo || payment._id.slice(-6),
-            customerName: payment.customer?.name,
-            notes: payment.notes || `Payment Mode: ${payment.mode}`
-          });
-
-          // TDS amount if applicable
-          if (hasTDS) {
-            entries.push({
-              date: payment.tdsDate || payment.date,
-              particulars: `TDS payable @ ${payment.tdsRate}%`,
-              debit: payment.tdsAmount!,
-              credit: 0,
-              balance: 0,
-              balanceType: 'DR',
-              reference: payment.referenceNo || payment._id.slice(-6),
-              customerName: payment.customer?.name,
-              notes: `TDS deducted from payment received`
-            });
-          }
-        } else if (payment.type === PaymentType.PAYMENT) {
-          // Payment Made (Debit - money going out, e.g., to truck owners)
-          entries.push({
-            date: payment.date,
-            particulars: `Payment made to ${payment.customer?.name || 'Unknown Vendor'}${payment.truckHiringNoteId ? ` for THN-${typeof payment.truckHiringNoteId === 'string' ? payment.truckHiringNoteId : (payment.truckHiringNoteId as TruckHiringNote).thnNumber}` : ''} (Ref: ${payment.referenceNo || payment._id.slice(-6)})`,
-            debit: payment.amount,
-            credit: 0,
-            balance: 0,
-            balanceType: 'DR',
-            reference: payment.referenceNo || payment._id.slice(-6),
-            customerName: payment.customer?.name,
-            notes: payment.notes || `Payment Mode: ${payment.mode}`
+            notes: `TDS @ ${payment.tdsRate}%`
           });
         }
       }
     });
 
-    // Process THNs (expenses)
-    truckHiringNotes.forEach(thn => {
-      if (new Date(thn.date) >= new Date(startDate) && new Date(thn.date) <= new Date(endDate)) {
-        // Freight Expense (Credit - money paid out, reduces profit balance)
-        entries.push({
-          date: thn.date,
-          particulars: `Freight expense for THN-${thn.thnNumber} - ${thn.truckOwnerName}`,
-          debit: 0,
-          credit: thn.freightRate,
-          balance: 0,
-          balanceType: 'CR',
-          reference: `THN-${thn.thnNumber}`,
-          customerName: thn.truckOwnerName,
-          notes: `Route: ${thn.loadingLocation} to ${thn.unloadingLocation}`
-        });
-      }
-    });
+    entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // Sort entries by date
-    entries.sort((a, b) => {
-      return new Date(a.date).getTime() - new Date(b.date).getTime();
-    });
-
-    // Calculate running balances starting from opening balance
+    // 3. Calculate running balances starting from openingBalanceAmount
     let runningBalance = openingBalanceAmount;
     const processedEntries = entries.map(entry => {
       runningBalance += (entry.debit - entry.credit);
-
       return {
         ...entry,
         balance: Math.abs(runningBalance),
@@ -467,32 +332,40 @@ export class LedgerService {
     });
 
     // Calculate summary
-    const totalRevenue = invoices.reduce((sum, inv) => sum + inv.grandTotal, 0);
-    const totalExpenses = truckHiringNotes.reduce((sum, thn) => sum + thn.freightRate, 0);
+    const totalRevenue = invoices.reduce((sum, inv) => {
+        const d = new Date(inv.date);
+        if (d >= new Date(startDate) && d <= new Date(endDate)) return sum + inv.grandTotal;
+        return sum;
+    }, 0);
+    const totalExpenses = truckHiringNotes.reduce((sum, thn) => {
+        const d = new Date(thn.date);
+        if (d >= new Date(startDate) && d <= new Date(endDate)) return sum + (thn.freightRate + (thn.additionalCharges || 0));
+        return sum;
+    }, 0);
     const netProfit = totalRevenue - totalExpenses;
 
-    // Final balances
-    const openingBalance = Math.abs(openingBalanceAmount);
-    const openingBalanceType = openingBalanceAmount >= 0 ? 'DR' : 'CR' as 'DR' | 'CR';
     const closingBalance = Math.abs(runningBalance);
     const closingBalanceType = runningBalance >= 0 ? 'DR' : 'CR' as 'DR' | 'CR';
+
+    const openingBalance = Math.abs(openingBalanceAmount);
+    const openingBalanceType = openingBalanceAmount >= 0 ? 'DR' : 'CR' as 'DR' | 'CR';
 
     return {
       period: { startDate, endDate },
       transactions: processedEntries,
-      openingBalance: Math.abs(openingBalance),
+      openingBalance,
       openingBalanceType,
-      closingBalance: Math.abs(closingBalance),
+      closingBalance,
       closingBalanceType,
       summary: {
         totalRevenue,
         totalExpenses,
         netProfit,
-        totalAssets: 0, // Would need asset calculations
-        totalLiabilities: 0, // Would need liability calculations
-        openingBalance: Math.abs(openingBalance),
+        totalAssets: 0,
+        totalLiabilities: 0,
+        openingBalance,
         openingBalanceType,
-        closingBalance: Math.abs(closingBalance),
+        closingBalance,
         closingBalanceType
       }
     };

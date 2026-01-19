@@ -32,7 +32,6 @@ export enum THNStatus {
 
 export enum PaymentType {
     ADVANCE = 'Advance',
-    RECEIPT = 'Receipt',
     PAYMENT = 'Payment',
 }
 
@@ -207,7 +206,7 @@ export interface TruckHiringNote {
   loadingDateTime: string;
   expectedDeliveryDate: string;
   agencyName: string;
-  truckOwnerContact?: string;
+  brokerContact?: string;
   freightRate: number;
   advanceAmount: number;
   balanceAmount: number;
@@ -216,6 +215,8 @@ export interface TruckHiringNote {
   remarks?: string;
   linkedLR?: string;
   linkedInvoice?: string;
+  goodsType: string;
+  truckType: string;
   status: THNStatus;
   paidAmount: number;
   payments: Payment[];

@@ -95,7 +95,9 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
       status: initialStatus,
       paidAmount: advanceAmount, // Set paidAmount to include advance payment
       payments: [],
-      paymentTerms: noteData.paymentTerms || ''
+      paymentTerms: noteData.paymentTerms || '',
+      goodsType: (noteData as any).goodsType || '',
+      truckType: (noteData as any).truckType || ''
     });
 
     const newNote = await note.save();
