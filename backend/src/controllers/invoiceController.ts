@@ -129,7 +129,7 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
     
     console.log('Manual freight amount:', manualFreightAmount);
     console.log('Using manual freight:', useManualFreight);
-    console.log('Final freight total:', finalFreightTotal);
+    console.log('Final taxable total:', finalTaxableTotal);
     
     // Use custom Invoice number if provided, otherwise generate one
     let invoiceNumber = invoiceData.invoiceNumber;
