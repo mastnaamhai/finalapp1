@@ -70,6 +70,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
             isRcm: false,
             isManualGst: false,
             status: InvoiceStatus.UNPAID,
+            bookingCharges: 0,
             freightCharges: {
                 amount: 0,
                 paymentType: 'Not Applicable',
@@ -91,12 +92,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [showCustomerModal, setShowCustomerModal] = useState(false);
     const [overrideFreight, setOverrideFreight] = useState(false);
-
-    // Additional Invoice-level charges to be distributed
-    const [extraCharge, setExtraCharge] = useState({
-        amount: 0,
-        type: 'bCh' as 'bCh' | 'hamali' | 'aoc' | 'trCh' | 'detentionCh' | 'freight'
-    });
 
     // Validation rules for invoice form
     const validationRules = {
@@ -188,7 +183,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
     // Calculate totals
     const calculateTotals = useCallback(() => {
-        const totalAmount = chargeBreakdown.total;
+        const totalAmount = chargeBreakdown.total + (invoice.bookingCharges || 0);
         
         let cgstAmount = 0;
         let sgstAmount = 0;
@@ -231,7 +226,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
     useEffect(() => {
         calculateTotals();
-    }, [calculateTotals]);
+    }, [calculateTotals, invoice.bookingCharges]);
 
     // Calculate freight total from selected LRs (includes all charges)
     const calculatedFreightTotal = useMemo(() => {
@@ -392,26 +387,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
             customerId: customer._id
         }));
         setShowCustomerModal(false);
-    };
-
-    const handleApplyExtraCharge = () => {
-        if (!invoice.lorryReceipts || invoice.lorryReceipts.length === 0 || extraCharge.amount <= 0) return;
-
-        const amountPerLr = extraCharge.amount / invoice.lorryReceipts.length;
-
-        setInvoice(prev => ({
-            ...prev,
-            lorryReceipts: (prev.lorryReceipts || []).map(lr => ({
-                ...lr,
-                charges: {
-                    ...lr.charges,
-                    [extraCharge.type]: (lr.charges as any)?.[extraCharge.type] + amountPerLr
-                }
-            }))
-        }));
-
-        // Reset extra charge input
-        setExtraCharge(prev => ({ ...prev, amount: 0 }));
     };
 
     // Auto-populate invoice fields based on selected LRs
@@ -1213,48 +1188,21 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                                         </div>
                                     </div>
 
-                                    {/* Charge Distribution Tool */}
+                                    {/* Booking Charges Section */}
                                     <div className="mt-6 pt-6 border-t border-gray-200">
-                                        <h4 className="text-sm font-semibold text-gray-800 mb-3">Add Common Charges to LRs</h4>
-                                        <p className="text-xs text-gray-500 mb-4">Add a charge here to distribute it equally among all {selectedLrsCount} selected Lorry Receipts.</p>
+                                        <h4 className="text-sm font-semibold text-gray-800 mb-3">Booking Charges</h4>
+                                        <p className="text-xs text-gray-500 mb-4">Add booking charges to the invoice. This amount will be added to the subtotal.</p>
 
                                         <div className="space-y-4">
                                             <div className="grid grid-cols-1 gap-3">
-                                                <div className="flex space-x-2">
-                                                    <div className="flex-1">
-                                                        <Input
-                                                            type="number"
-                                                            value={extraCharge.amount || ''}
-                                                            onChange={(e) => setExtraCharge(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
-                                                            placeholder="Amount to add"
-                                                            className="h-10"
-                                                        />
-                                                    </div>
-                                                    <div className="w-1/2">
-                                                        <Select
-                                                            value={extraCharge.type}
-                                                            onChange={(e) => setExtraCharge(prev => ({ ...prev, type: e.target.value as any }))}
-                                                            className="h-10"
-                                                        >
-                                                            <option value="bCh">Booking Charge</option>
-                                                            <option value="hamali">Hamali</option>
-                                                            <option value="aoc">AOC (Other)</option>
-                                                            <option value="freight">Freight</option>
-                                                            <option value="trCh">Transit Charge</option>
-                                                            <option value="detentionCh">Detention</option>
-                                                        </Select>
-                                                    </div>
-                                                </div>
-                                                <Button
-                                                    type="button"
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    className="w-full"
-                                                    onClick={handleApplyExtraCharge}
-                                                    disabled={!invoice.lorryReceipts?.length || extraCharge.amount <= 0}
-                                                >
-                                                    Distribute ₹{extraCharge.amount || 0} among {selectedLrsCount} LRs
-                                                </Button>
+                                                <Input
+                                                    type="number"
+                                                    label="Booking Charges (₹)"
+                                                    value={invoice.bookingCharges || 0}
+                                                    onChange={(e) => handleValueChange('bookingCharges', parseFloat(e.target.value) || 0)}
+                                                    placeholder="Enter booking charges"
+                                                    className="h-10"
+                                                />
                                             </div>
                                         </div>
                                     </div>

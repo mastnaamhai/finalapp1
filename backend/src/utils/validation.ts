@@ -27,6 +27,7 @@ export const createInvoiceSchema = z.object({
   // Auto-calculated freight fields
   isAutoFreightCalculated: z.boolean().optional(),
   invoiceFreightTotal: z.number().nonnegative().optional(),
+  bookingCharges: z.number().nonnegative().optional(),
   // Separate freight charges fields
   freightCharges: z.object({
     amount: z.number().nonnegative().optional(),

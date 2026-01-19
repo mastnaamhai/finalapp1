@@ -44,8 +44,10 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                     (lr.charges?.detentionCh || 0);
     }, 0);
 
-    // totalTaxableAmount is the sum of all charges across all LRs
-    const totalTaxableAmount = totalFreightOnly + totalBiltyCharges + totalOtherCharges;
+    // Sum of all individual LR charges
+    const totalLrCharges = totalFreightOnly + totalBiltyCharges + totalOtherCharges;
+    // Total taxable amount includes the invoice-level booking charges
+    const totalTaxableAmount = totalLrCharges + (invoice.bookingCharges || 0);
     const subTotal = totalTaxableAmount;
     
     // Get the origin location text based on LR data
@@ -674,18 +676,12 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                         <div className="w-2/5 space-y-1 text-lg">
                             <div className="flex justify-between border-b border-gray-100 pb-1">
                                 <span className="text-gray-600">Total Freight:</span>
-                                <span>{totalFreightOnly.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span>{totalLrCharges.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
-                            {totalBiltyCharges > 0 && (
+                            {(invoice.bookingCharges || 0) > 0 && (
                                 <div className="flex justify-between border-b border-gray-100 pb-1">
-                                    <span className="text-gray-600">Booking/Bilty Charges:</span>
-                                    <span>{totalBiltyCharges.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
-                            )}
-                            {totalOtherCharges > 0 && (
-                                <div className="flex justify-between border-b border-gray-100 pb-1">
-                                    <span className="text-gray-600">Other Charges:</span>
-                                    <span>{totalOtherCharges.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span className="text-gray-600">Booking charges:</span>
+                                    <span>{(invoice.bookingCharges || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                             )}
                             <div className="flex justify-between font-semibold py-1">

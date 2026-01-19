@@ -143,6 +143,7 @@ export interface Invoice {
   // Auto-calculated freight fields
   isAutoFreightCalculated: boolean;
   invoiceFreightTotal: number;
+  bookingCharges?: number;
   // Separate freight charges fields
   freightCharges?: {
     amount: number;

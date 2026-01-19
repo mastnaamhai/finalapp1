@@ -125,7 +125,10 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
     // Check if manual freight override is provided
     const manualFreightAmount = invoiceData.freightCharges?.amount || 0;
     const useManualFreight = manualFreightAmount > 0;
-    const finalTaxableTotal = useManualFreight ? manualFreightAmount : totalCharges;
+
+    // Total taxable amount is sum of LRs + booking charges (or manual override)
+    const lrTaxableTotal = useManualFreight ? manualFreightAmount : totalCharges;
+    const finalTaxableTotal = lrTaxableTotal + (invoiceData.bookingCharges || 0);
     
     console.log('Manual freight amount:', manualFreightAmount);
     console.log('Using manual freight:', useManualFreight);
@@ -206,31 +209,13 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
       });
     console.log('Populated Invoice:', populatedInvoice?._id);
 
-    // Update status and charges of associated lorry receipts
-    if (req.body.lorryReceipts && Array.isArray(req.body.lorryReceipts)) {
-      for (const lrData of req.body.lorryReceipts) {
-        if (lrData._id && lrData.charges) {
-          await LorryReceipt.findByIdAndUpdate(lrData._id, {
-            $set: {
-              status: LorryReceiptStatus.INVOICED,
-              charges: lrData.charges,
-              totalAmount: (lrData.charges.freight || 0) +
-                          (lrData.charges.aoc || 0) +
-                          (lrData.charges.hamali || 0) +
-                          (lrData.charges.bCh || 0) +
-                          (lrData.charges.trCh || 0) +
-                          (lrData.charges.detentionCh || 0)
-            }
-          });
-        }
-      }
-      console.log('Updated LR statuses and charges for invoice');
-    } else if (invoiceData.lorryReceipts && invoiceData.lorryReceipts.length > 0) {
+    // Update status of associated lorry receipts (Do NOT update charges, as requested)
+    if (invoiceData.lorryReceipts && invoiceData.lorryReceipts.length > 0) {
       await LorryReceipt.updateMany(
         { _id: { $in: invoiceData.lorryReceipts } },
         { $set: { status: LorryReceiptStatus.INVOICED } }
       );
-      console.log('Updated LR statuses for invoice (fallback)');
+      console.log('Updated LR statuses for invoice');
     }
 
     res.status(201).json(populatedInvoice || createdInvoice);
@@ -310,8 +295,12 @@ export const updateInvoice = asyncHandler(async (req: Request, res: Response) =>
       const { totalCharges } = await calculateTotalChargesFromLrs(invoiceData.lorryReceipts);
       invoiceData.isAutoFreightCalculated = true;
       invoiceData.invoiceFreightTotal = totalCharges;
-      // CRITICAL FIX: Update totalAmount to match new LR sum
-      invoiceData.totalAmount = totalCharges;
+      // Update totalAmount to match new LR sum + booking charges
+      invoiceData.totalAmount = totalCharges + (invoiceData.bookingCharges || invoice.bookingCharges || 0);
+    } else if (invoiceData.bookingCharges !== undefined) {
+      // If only booking charges were updated, recalculate totalAmount
+      const { totalCharges } = await calculateTotalChargesFromLrs(invoice.lorryReceipts.map(lr => lr.toString()));
+      invoiceData.totalAmount = totalCharges + invoiceData.bookingCharges;
     }
 
     Object.assign(invoice, invoiceData);
@@ -319,33 +308,13 @@ export const updateInvoice = asyncHandler(async (req: Request, res: Response) =>
 
     const newLrIds = updatedInvoice.lorryReceipts.map(lr => lr.toString());
 
-    // Update charges and status for all currently selected LRs
-    if (req.body.lorryReceipts && Array.isArray(req.body.lorryReceipts)) {
-      for (const lrData of req.body.lorryReceipts) {
-        if (lrData._id && lrData.charges) {
-          await LorryReceipt.findByIdAndUpdate(lrData._id, {
-            $set: {
-              status: LorryReceiptStatus.INVOICED,
-              charges: lrData.charges,
-              totalAmount: (lrData.charges.freight || 0) +
-                          (lrData.charges.aoc || 0) +
-                          (lrData.charges.hamali || 0) +
-                          (lrData.charges.bCh || 0) +
-                          (lrData.charges.trCh || 0) +
-                          (lrData.charges.detentionCh || 0)
-            }
-          });
-        }
-      }
-    } else {
-      // Fallback for simple ID array
-      const toInvoice = newLrIds.filter(id => !originalLrIds.includes(id));
-      if (toInvoice.length > 0) {
-        await LorryReceipt.updateMany(
-          { _id: { $in: toInvoice } },
-          { $set: { status: LorryReceiptStatus.INVOICED } }
-        );
-      }
+    // Update status of newly associated lorry receipts
+    const toInvoice = newLrIds.filter(id => !originalLrIds.includes(id));
+    if (toInvoice.length > 0) {
+      await LorryReceipt.updateMany(
+        { _id: { $in: toInvoice } },
+        { $set: { status: LorryReceiptStatus.INVOICED } }
+      );
     }
 
     // LRs to be marked as created (or other status)

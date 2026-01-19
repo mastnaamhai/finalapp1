@@ -25,6 +25,7 @@ export interface IInvoice extends Document {
   // Auto-calculated freight fields
   isAutoFreightCalculated: boolean;
   invoiceFreightTotal: number;
+  bookingCharges: number;
   // Separate freight charges fields
   freightCharges?: {
     amount: number;
@@ -68,6 +69,7 @@ const InvoiceSchema = new Schema({
   // Auto-calculated freight fields
   isAutoFreightCalculated: { type: Boolean, default: true },
   invoiceFreightTotal: { type: Number, default: 0 },
+  bookingCharges: { type: Number, default: 0 },
   // Separate freight charges fields
   freightCharges: {
     amount: { type: Number, default: 0 },
