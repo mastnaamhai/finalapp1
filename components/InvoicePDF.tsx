@@ -532,7 +532,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                                     const trCh = lr.charges?.trCh || 0;
                                     const detentionCh = lr.charges?.detentionCh || 0;
                                     const totalCharges = freightCharges + aoc + hamali + bCh + trCh + detentionCh;
-                                    const taxableAmount = lr.totalAmount || 0;
+                                    const taxableAmount = totalCharges;
                                     
                                     // Calculate GST amounts for this LR (proportional to total invoice)
                                     const lrProportion = taxableAmount / (invoice.totalAmount || 1);
@@ -622,6 +622,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                                 <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Freight (₹)</th>
                                 <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>AOC (₹)</th>
                                 <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Hamali (₹)</th>
+                                <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Bilty Ch. (₹)</th>
                                 <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Tr. Ch. (₹)</th>
                                 <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Detention Ch. (₹)</th>
                                 <th className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} font-semibold text-center`}>Total (₹)</th>
@@ -643,6 +644,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{freight.toLocaleString('en-IN')}</td>
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{aoc.toLocaleString('en-IN')}</td>
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{hamali.toLocaleString('en-IN')}</td>
+                                            <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{bCh.toLocaleString('en-IN')}</td>
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{trCh.toLocaleString('en-IN')}</td>
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{detentionCh.toLocaleString('en-IN')}</td>
                                             <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm font-semibold`}>{totalCharges.toLocaleString('en-IN')}</td>
@@ -653,9 +655,10 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                             <tfoot className="font-bold bg-gray-200">
                                 <tr className={hideTableBorders ? '' : 'border-t-2 border-black'}>
                                     <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>Totals:</td>
-                                    <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{totalFreight.toLocaleString('en-IN')}</td>
+                                    <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{(invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.charges?.freight || 0), 0).toLocaleString('en-IN')}</td>
                                     <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{(invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.charges?.aoc || 0), 0).toLocaleString('en-IN')}</td>
                                     <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{(invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.charges?.hamali || 0), 0).toLocaleString('en-IN')}</td>
+                                    <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{(invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.charges?.bCh || 0), 0).toLocaleString('en-IN')}</td>
                                     <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{(invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.charges?.trCh || 0), 0).toLocaleString('en-IN')}</td>
                                     <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{(invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.charges?.detentionCh || 0), 0).toLocaleString('en-IN')}</td>
                                     <td className={`p-2 ${hideTableBorders ? '' : 'border border-gray-300'} text-center text-sm`}>{subTotal.toLocaleString('en-IN')}</td>

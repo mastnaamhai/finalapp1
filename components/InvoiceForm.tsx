@@ -169,7 +169,16 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
     // Calculate totals
     const calculateTotals = useCallback(() => {
-        const totalAmount = invoice.lorryReceipts?.reduce((sum, lr) => sum + (lr.totalAmount || 0), 0) || 0;
+        const totalAmount = invoice.lorryReceipts?.reduce((sum, lr) => {
+            const lrCharges = lr.charges || {};
+            const lrTotal = (lrCharges.freight || 0) +
+                          (lrCharges.aoc || 0) +
+                          (lrCharges.hamali || 0) +
+                          (lrCharges.bCh || 0) +
+                          (lrCharges.trCh || 0) +
+                          (lrCharges.detentionCh || 0);
+            return sum + lrTotal;
+        }, 0) || 0;
         
         let cgstAmount = 0;
         let sgstAmount = 0;
