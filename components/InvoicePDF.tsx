@@ -34,8 +34,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
     const totalPacks = (invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.packages || []).reduce((pkgSum, p) => pkgSum + (p.count || 0), 0), 0);
     const totalWeight = (invoice.lorryReceipts || []).reduce((sum, lr) => sum + (lr.packages || []).reduce((pkgSum, p) => pkgSum + (p.chargedWeight || 0), 0), 0);
     // Use auto-calculated freight total if available, otherwise calculate from LRs (includes all charges)
-    const totalFreight = invoice.invoiceFreightTotal || (invoice.lorryReceipts || []).reduce((sum, lr) => {
-        // Calculate total charges for this LR (freight + all other charges)
+    const totalFreight = (invoice.lorryReceipts || []).reduce((sum, lr) => {
         const totalCharges = (lr.charges?.freight || 0) + 
                             (lr.charges?.aoc || 0) + 
                             (lr.charges?.hamali || 0) + 
@@ -45,7 +44,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
         return sum + totalCharges;
     }, 0);
     
-    const subTotal = invoice.totalAmount || 0;
+    const subTotal = totalFreight;
     
     // Get the origin location text based on LR data
     const originLocationText = getOriginLocationText(invoice.lorryReceipts || []);
@@ -535,7 +534,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                                     const taxableAmount = totalCharges;
                                     
                                     // Calculate GST amounts for this LR (proportional to total invoice)
-                                    const lrProportion = taxableAmount / (invoice.totalAmount || 1);
+                                    const lrProportion = taxableAmount / (subTotal || 1);
                                     let lrSgstAmount = 0;
                                     let lrCgstAmount = 0;
                                     let lrIgstAmount = 0;
@@ -673,7 +672,7 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, companyInfo, 
                         <div className="w-2/5 space-y-1 text-lg">
                             <div className="flex justify-between">
                                 <span>Sub Total:</span>
-                                <span>{(invoice.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span>{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                             {invoice.isAutoFreightCalculated && (
                                 <div className="flex justify-between text-base text-gray-600">
