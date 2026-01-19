@@ -14,39 +14,39 @@ export enum GstPayableBy {
 }
 
 export enum GstType {
-    CGST_SGST = 'CGST/SGST',
-    IGST = 'IGST',
+  CGST_SGST = 'CGST/SGST',
+  IGST = 'IGST',
 }
 
 export enum InvoiceStatus {
-    UNPAID = 'Unpaid',
-    PARTIALLY_PAID = 'Partially Paid',
-    PAID = 'Paid',
+  UNPAID = 'Unpaid',
+  PARTIALLY_PAID = 'Partially Paid',
+  PAID = 'Paid',
 }
 
 export enum THNStatus {
-    UNPAID = 'Unpaid',
-    PARTIALLY_PAID = 'Partially Paid',
-    PAID = 'Paid',
+  UNPAID = 'Unpaid',
+  PARTIALLY_PAID = 'Partially Paid',
+  PAID = 'Paid',
 }
 
 export enum PaymentType {
-    ADVANCE = 'Advance',
-    RECEIPT = 'Receipt',
-    PAYMENT = 'Payment',
+  ADVANCE = 'Advance',
+  RECEIPT = 'Receipt',
+  PAYMENT = 'Payment',
 }
 
 export enum PaymentMode {
-    CASH = 'Cash',
-    CHEQUE = 'Cheque',
-    NEFT = 'NEFT',
-    RTGS = 'RTGS',
-    UPI = 'UPI',
+  CASH = 'Cash',
+  CHEQUE = 'Cheque',
+  NEFT = 'NEFT',
+  RTGS = 'RTGS',
+  UPI = 'UPI',
 }
 
 export enum RiskBearer {
-    CARRIER = "AT CARRIER'S RISK",
-    OWNER = "AT OWNER'S RISK",
+  CARRIER = "AT CARRIER'S RISK",
+  OWNER = "AT OWNER'S RISK",
 }
 
 export interface Customer {
@@ -108,11 +108,11 @@ export interface LorryReceipt {
   riskBearer: RiskBearer;
   status: LorryReceiptStatus;
   insurance: {
-      hasInsured: boolean;
-      company?: string;
-      policyNo?: string;
-      date?: string;
-      amount?: number;
+    hasInsured: boolean;
+    company?: string;
+    policyNo?: string;
+    date?: string;
+    amount?: number;
   },
   invoiceNo: string;
   sealNo: string;
@@ -164,31 +164,31 @@ export interface Invoice {
 
 
 export interface Payment {
-    _id: string;
-    invoiceId?: string;
-    invoice?: Invoice;
-    truckHiringNoteId?: string;
-    truckHiringNote?: TruckHiringNote;
-    customerId: string;
-    customer?: Customer;
-    date: string;
+  _id: string;
+  invoiceId?: string;
+  invoice?: Invoice;
+  truckHiringNoteId?: string;
+  truckHiringNote?: TruckHiringNote;
+  customerId: string;
+  customer?: Customer;
+  date: string;
+  amount: number;
+  type: PaymentType;
+  mode: PaymentMode;
+  referenceNo?: string;
+  notes?: string;
+  // TDS fields
+  tdsApplicable?: boolean;
+  tdsRate?: number;
+  tdsAmount?: number;
+  tdsDate?: string;
+  // Settlement tracking
+  settlements?: {
+    invoiceId: string;
     amount: number;
-    type: PaymentType;
-    mode: PaymentMode;
-    referenceNo?: string;
-    notes?: string;
-    // TDS fields
-    tdsApplicable?: boolean;
-    tdsRate?: number;
-    tdsAmount?: number;
-    tdsDate?: string;
-    // Settlement tracking
-    settlements?: {
-      invoiceId: string;
-      amount: number;
-      date: string;
-    }[];
-    unsettledAmount?: number;
+    date: string;
+  }[];
+  unsettledAmount?: number;
 }
 
 export interface TruckHiringNote {
@@ -196,22 +196,23 @@ export interface TruckHiringNote {
   thnNumber: number;
   date: string;
   truckNumber: string;
-  truckType: string;
+  truckType?: string;
   vehicleCapacity: number;
+  weightUnit?: 'KG' | 'MT' | 'Tons';
   loadingLocation?: string;
   unloadingLocation?: string;
   loadingDateTime?: string;
   expectedDeliveryDate?: string;
-  goodsType: string;
+  goodsType?: string;
   agencyName: string;
-  truckOwnerName: string;
+  truckOwnerName?: string;
   truckOwnerContact?: string;
   freightRate: number;
-  freightRateType: 'per_trip' | 'per_ton' | 'per_km';
+  freightRateType?: 'per_trip' | 'per_ton' | 'per_km';
   advanceAmount: number;
   balanceAmount: number;
-  paymentMode: 'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque' | 'Other';
-  paymentTerms: string;
+  paymentMode?: 'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque' | 'Other';
+  paymentTerms?: string;
   additionalCharges?: number;
   remarks?: string;
   linkedLR?: string;

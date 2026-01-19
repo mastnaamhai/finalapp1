@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../constants';
 
 export interface SimpleNumberingConfig {
   _id: string;
-  type: 'invoice' | 'consignment';
+  type: 'invoice' | 'consignment' | 'truckHiringNoteId';
   startingNumber: number;
   currentNumber: number;
   prefix: string;
@@ -24,7 +24,7 @@ class SimpleNumberingService {
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
-    
+
     try {
       await this.loadConfigs();
       this.isInitialized = true;
@@ -32,6 +32,18 @@ class SimpleNumberingService {
       console.error('Failed to initialize numbering service:', error);
       this.initializeDefaultConfigs();
       this.isInitialized = true;
+    }
+  }
+
+  /**
+   * Force reload configurations from the backend
+   */
+  async reloadConfigs(): Promise<void> {
+    try {
+      await this.loadConfigs();
+    } catch (error) {
+      console.error('Failed to reload numbering configs:', error);
+      throw error;
     }
   }
 
@@ -88,14 +100,25 @@ class SimpleNumberingService {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+
+    // Default THN configuration
+    this.configs.set('truckHiringNoteId', {
+      _id: 'truckHiringNote-default',
+      type: 'truckHiringNoteId',
+      startingNumber: 2001,
+      currentNumber: 2001,
+      prefix: 'THN',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   }
 
   /**
    * Get the next auto-generated number for a given type
    */
-  async getNextNumber(type: 'invoice' | 'consignment'): Promise<number> {
+  async getNextNumber(type: 'invoice' | 'consignment' | 'truckHiringNoteId'): Promise<number> {
     await this.initialize();
-    
+
     const config = this.configs.get(type);
     if (!config) {
       throw new Error(`No numbering configuration found for ${type}`);
@@ -118,7 +141,7 @@ class SimpleNumberingService {
   /**
    * Validate a manually entered number for uniqueness
    */
-  async validateManualNumber(type: 'invoice' | 'consignment', number: number): Promise<NumberingValidationResult> {
+  async validateManualNumber(type: 'invoice' | 'consignment' | 'truckHiringNoteId', number: number): Promise<NumberingValidationResult> {
     await this.initialize();
     
     const config = this.configs.get(type);
@@ -141,7 +164,7 @@ class SimpleNumberingService {
   /**
    * Check if a number is already in use
    */
-  private async checkDuplicateNumber(type: 'invoice' | 'consignment', number: number): Promise<boolean> {
+  private async checkDuplicateNumber(type: 'invoice' | 'consignment' | 'truckHiringNoteId', number: number): Promise<boolean> {
     try {
       const response = await fetch(`${API_BASE_URL}/numbering/check-duplicate`, {
         method: 'POST',
@@ -166,7 +189,7 @@ class SimpleNumberingService {
   /**
    * Update the current number in the backend
    */
-  private async updateCurrentNumber(type: 'invoice' | 'consignment', newNumber: number): Promise<void> {
+  private async updateCurrentNumber(type: 'invoice' | 'consignment' | 'truckHiringNoteId', newNumber: number): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/numbering/update-current`, {
       method: 'POST',
       headers: {
@@ -184,7 +207,7 @@ class SimpleNumberingService {
   /**
    * Save a numbering configuration
    */
-  async saveConfig(type: 'invoice' | 'consignment', startingNumber: number, prefix: string = ''): Promise<SimpleNumberingConfig> {
+  async saveConfig(type: 'invoice' | 'consignment' | 'truckHiringNoteId', startingNumber: number, prefix: string = ''): Promise<SimpleNumberingConfig> {
     try {
       const response = await fetch(`${API_BASE_URL}/numbering/configs`, {
         method: 'POST',
@@ -211,7 +234,7 @@ class SimpleNumberingService {
   /**
    * Get a specific configuration
    */
-  getConfig(type: 'invoice' | 'consignment'): SimpleNumberingConfig | undefined {
+  getConfig(type: 'invoice' | 'consignment' | 'truckHiringNoteId'): SimpleNumberingConfig | undefined {
     return this.configs.get(type);
   }
 
@@ -225,7 +248,7 @@ class SimpleNumberingService {
   /**
    * Format a number according to the configuration
    */
-  formatNumber(type: 'invoice' | 'consignment', number: number): string {
+  formatNumber(type: 'invoice' | 'consignment' | 'truckHiringNoteId', number: number): string {
     const config = this.configs.get(type);
     if (!config) {
       return number.toString();

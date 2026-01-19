@@ -125,10 +125,12 @@ export const createPaymentSchema = z.object({
 export const updatePaymentSchema = createPaymentSchema.partial();
 
 export const createTruckHiringNoteSchema = z.object({
+  thnNumber: z.number().positive().optional(),
   date: z.string().min(1),
   truckNumber: z.string().min(1),
   truckType: z.string().min(1),
   vehicleCapacity: z.number().positive(),
+  weightUnit: z.enum(['KG', 'MT', 'Tons']).optional(),
   loadingLocation: z.string().optional(),
   unloadingLocation: z.string().optional(),
   goodsType: z.string().min(1),

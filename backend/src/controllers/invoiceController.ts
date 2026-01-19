@@ -133,8 +133,8 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
     
     // Use custom Invoice number if provided, otherwise generate one
     let invoiceNumber = invoiceData.invoiceNumber;
+    let config = await NumberingConfig.findOne({ type: 'invoice' });
     if (!invoiceNumber) {
-      let config = await NumberingConfig.findOne({ type: 'invoice' });
       if (!config) {
         // Initialize numbering config for invoice if it doesn't exist
         config = await NumberingConfig.create({
@@ -145,7 +145,7 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
         });
         console.log('Created new invoice numbering config');
       }
-      
+
       invoiceNumber = config.currentNumber;
       config.currentNumber = config.currentNumber + 1;
       await config.save();
@@ -154,12 +154,18 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
       // Validate manual entry for uniqueness
       const existingInvoice = await Invoice.findOne({ invoiceNumber });
       if (existingInvoice) {
-        res.status(400).json({ 
-          message: 'Invoice number already exists. Please enter a different number.' 
+        res.status(400).json({
+          message: 'Invoice number already exists. Please enter a different number.'
         });
         return;
       }
       console.log('Using custom Invoice number:', invoiceNumber);
+
+      // Update current number if manual number is higher
+      if (config) {
+        config.currentNumber = Math.max(config.currentNumber, invoiceNumber + 1);
+        await config.save();
+      }
     }
     
     // Ensure all required fields are present

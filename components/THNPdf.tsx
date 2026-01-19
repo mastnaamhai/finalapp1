@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import type { TruckHiringNote, CompanyInfo } from '../types';
 import { generateDocumentPdf, printDocument } from '../services/pdfService';
-import { Button } from './ui/Button';
-import { Logo } from './ui/Logo';
-import { PrintStyles } from './ui/PrintStyles';
 import { PDFViewer, usePDFViewer } from './ui/PDFViewer';
 import { PDFActionBar } from './ui/PDFActionBar';
 import { formatDate, numberToWords } from '../services/utils';
@@ -65,8 +62,20 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
                             <head>
                                 <title>Truck Hiring Note ${thn.thnNumber}</title>
                                 <style>
-                                    body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+                                    body { margin: 0; padding: 20px; font-family: 'Times New Roman', serif; }
                                     @page { size: A4 portrait; margin: 0.5in; }
+                                    /* Ensure styles passed from component are applied */
+                                    ${Array.from(document.styleSheets)
+                                        .map(styleSheet => {
+                                            try {
+                                                return Array.from(styleSheet.cssRules)
+                                                    .map(rule => rule.cssText)
+                                                    .join('');
+                                            } catch (e) {
+                                                return '';
+                                            }
+                                        })
+                                        .join('')}
                                 </style>
                             </head>
                             <body>
@@ -85,7 +94,6 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
 
     return (
         <div className="space-y-6">
-            <PrintStyles documentType="truck-hiring-note" orientation="portrait" />
             <div className="flex justify-between items-center no-print print-controls">
                 <h2 className="text-3xl font-bold text-gray-800">Truck Hiring Note #{thn.thnNumber}</h2>
                 <PDFActionBar
@@ -100,605 +108,281 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
             </div>
 
             <div id="thn-pdf-container" className="print-container">
-                <div id="thn-pdf" className="thn-pdf bg-white" style={{ width: '210mm', minHeight: '297mm', fontFamily: 'sans-serif', lineHeight: '1.5', margin: '0 auto', border: '2px solid #000000', padding: '20px', boxSizing: 'border-box' }}>
+                <div id="thn-pdf" className="thn-pdf bg-white" style={{
+                    width: '210mm',
+                    minHeight: '297mm',
+                    padding: '20px',
+                    margin: '0 auto',
+                    backgroundColor: 'white',
+                    fontFamily: '"Times New Roman", Times, serif',
+                    fontSize: '18px',
+                    color: '#000',
+                    lineHeight: '1.5'
+                }}>
                     <style>{`
-                        /* Screen styles - responsive scaling */
-                        #thn-pdf {
-                            transform: scale(1);
-                            transform-origin: top left;
-                            transition: transform 0.3s ease;
-                            padding: 20px;
+                        .thn-pdf * {
+                            box-sizing: border-box;
                         }
-                        
-                        @media (max-width: 1200px) {
-                            #thn-pdf {
-                                transform: scale(0.8);
-                            }
+                        .thn-pdf .header {
+                            text-align: center;
+                            margin-bottom: 20px;
+                            position: relative;
                         }
-                        
-                        @media (max-width: 1000px) {
-                            #thn-pdf {
-                                transform: scale(0.7);
-                            }
+                        .thn-pdf .logo {
+                            position: absolute;
+                            left: 10px;
+                            top: 0;
+                            width: 60px;
+                            height: auto;
                         }
-                        
-                        @media (max-width: 800px) {
-                            #thn-pdf {
-                                transform: scale(0.6);
-                            }
+                        .thn-pdf .jai-notes {
+                            font-size: 16px;
+                            text-align: center;
+                            color: #666;
+                            margin-bottom: 5px;
                         }
-                        
-                        .thn-pdf {
-                            font-size: 12px;
+                        .thn-pdf .company-name {
+                            color: #dc2626; /* Red color from image */
+                            font-size: 32px;
+                            font-weight: bold;
+                            text-transform: uppercase;
+                            margin: 5px 0;
+                            font-family: Arial, sans-serif;
+                            text-align: center;
+                        }
+                        .thn-pdf .sub-header {
+                            font-size: 18px;
+                            font-weight: bold;
                             color: #1f2937;
+                            text-transform: uppercase;
+                            margin-bottom: 5px;
+                            text-align: center;
                         }
-                        
-                        .thn-pdf .section {
-                            margin-bottom: 18px;
+                        .thn-pdf .address {
+                            font-size: 16px;
+                            color: #374151;
+                            margin-bottom: 2px;
+                            text-align: center;
                         }
-                        
-                        .thn-pdf .grid-2 {
-                            display: grid;
-                            grid-template-columns: 1fr 1fr;
-                            gap: 20px;
+                        .thn-pdf .email {
+                            font-size: 16px;
+                            font-weight: bold;
+                            color: #374151;
+                            text-align: center;
                         }
-                        
-                        .thn-pdf .grid-3 {
-                            display: grid;
-                            grid-template-columns: 1fr 1fr 1fr;
-                            gap: 16px;
+                        .thn-pdf .contact-box {
+                            position: absolute;
+                            right: 0;
+                            top: 0;
+                            text-align: right;
+                            font-size: 16px;
+                            font-weight: bold;
                         }
-                        
-                        .thn-pdf .grid-4 {
-                            display: grid;
-                            grid-template-columns: 1fr 1fr 1fr 1fr;
-                            gap: 16px;
+                        .thn-pdf .advance-memo-box {
+                            border: 2px solid #374151;
+                            border-radius: 20px;
+                            padding: 2px 10px;
+                            font-weight: bold;
+                            display: inline-block;
+                            margin: 5px 0;
+                            font-size: 16px;
                         }
-                        
-                        .thn-pdf .border-section {
-                            border: 1.5px solid #d1d5db;
-                            border-radius: 6px;
-                            padding: 18px;
-                            margin-bottom: 16px;
-                            background: #ffffff;
-                            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-                        }
-                        
-                        .thn-pdf .header-bg {
-                            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #1d4ed8 100%);
-                            color: white;
-                            padding: 28px 24px;
-                            border-radius: 8px;
-                            margin-bottom: 28px;
-                            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
-                        }
-                        
-                        .thn-pdf .info-row {
+                        .thn-pdf .meta-row {
                             display: flex;
                             justify-content: space-between;
+                            margin: 15px 0;
+                            font-weight: bold;
+                            font-size: 18px;
+                            color: #dc2626;
                             align-items: center;
-                            padding: 10px 0;
-                            border-bottom: 1px solid #e5e7eb;
-                            transition: background-color 0.2s;
                         }
-                        
-                        .thn-pdf .info-row:hover {
-                            background-color: #f9fafb;
-                            margin: 0 -8px;
-                            padding-left: 8px;
-                            padding-right: 8px;
-                            border-radius: 4px;
+                        .thn-pdf .meta-row .label {
+                            color: #dc2626;
                         }
-                        
-                        .thn-pdf .info-row:last-child {
-                            border-bottom: none;
+                        .thn-pdf .meta-row .value {
+                            color: #000;
+                            margin-left: 5px;
                         }
-                        
-                        .thn-pdf .label {
-                            font-weight: 600;
-                            color: #4b5563;
-                            min-width: 150px;
-                            font-size: 12px;
-                            text-transform: uppercase;
-                            letter-spacing: 0.3px;
+                        .thn-pdf .content-body {
+                            margin-top: 20px;
+                            line-height: 1.8;
                         }
-                        
-                        .thn-pdf .value {
-                            color: #111827;
-                            text-align: right;
-                            font-weight: 500;
-                            font-size: 13px;
+                        .thn-pdf .field-line {
+                            display: inline-block;
+                            min-width: 50px;
+                            padding: 0 5px;
+                            font-weight: bold;
+                            color: #000;
+                        }
+                         .thn-pdf .field-line-long {
+                            display: inline-block;
+                            width: 100%;
+                            padding: 0 5px;
+                            font-weight: bold;
+                            color: #000;
+                        }
+                        .thn-pdf .row {
+                            display: flex;
+                            align-items: baseline;
+                            margin-bottom: 12px;
+                            flex-wrap: wrap;
+                        }
+                        .thn-pdf .row-spaced {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: baseline;
+                            margin-bottom: 12px;
+                        }
+                         .thn-pdf .flex-1 {
                             flex: 1;
                         }
-                        
-                        .thn-pdf .amount {
-                            font-weight: 700;
-                            color: #059669;
-                            font-size: 14px;
+                        .thn-pdf .label {
+                            margin-right: 5px;
+                            white-space: nowrap;
+                            font-weight: bold;
                         }
-                        
-                        .thn-pdf .balance {
-                            font-weight: 700;
-                            color: #dc2626;
-                            font-size: 14px;
-                        }
-                        
-                        .thn-pdf .section-title {
-                            font-size: 14px;
-                            font-weight: 700;
-                            color: #1f2937;
-                            margin-bottom: 14px;
-                            padding-bottom: 10px;
-                            border-bottom: 2px solid #3b82f6;
-                            text-transform: uppercase;
-                            letter-spacing: 0.8px;
+                        .thn-pdf .footer {
+                            margin-top: 40px;
                             display: flex;
-                            align-items: center;
-                            gap: 8px;
-                        }
-                        
-                        .thn-pdf .highlight-box {
-                            background: #ffffff;
-                            border: 2px solid #000000;
-                            border-radius: 8px;
-                            padding: 20px;
-                            margin: 18px 0;
-                            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                        }
-                        
-                        .thn-pdf .signature-section {
-                            background: #f9fafb;
-                            border: 2px dashed #9ca3af;
-                            border-radius: 8px;
-                            padding: 24px;
-                            text-align: center;
-                            min-height: 120px;
-                            display: flex;
-                            flex-direction: column;
                             justify-content: space-between;
+                            align-items: flex-end;
                         }
-                        
-                        .thn-pdf .signature-line {
-                            height: 2px;
-                            background: #6b7280;
-                            margin: 12px auto;
-                            width: 80%;
-                            max-width: 200px;
+                        .thn-pdf .bank-box {
+                            border: 1px solid #000;
+                            padding: 10px;
+                            width: 55%;
+                            font-size: 14px;
                         }
-                        
-                        .no-break {
-                            page-break-inside: avoid;
+                        .thn-pdf .signature-box {
+                            text-align: right;
+                            width: 40%;
                         }
-                        
-                        .thn-pdf .company-logo {
-                            filter: brightness(0) invert(1);
+                        .thn-pdf .signature-title {
+                            color: #dc2626;
+                            font-weight: bold;
+                            font-size: 14px;
+                            margin-bottom: 40px;
                         }
-                        
-                        .thn-pdf .header-badge {
-                            background: rgba(255, 255, 255, 0.25);
-                            backdrop-filter: blur(10px);
-                            padding: 8px 16px;
-                            border-radius: 6px;
-                            border: 1px solid rgba(255, 255, 255, 0.3);
-                        }
-                        
-                        .thn-pdf .trip-route {
-                            background: #f0f9ff;
-                            border-left: 4px solid #3b82f6;
-                            padding: 12px 16px;
-                            border-radius: 4px;
-                            margin: 12px 0;
-                            font-weight: 500;
-                        }
-                        
-                        .thn-pdf .financial-grid {
-                            display: grid;
-                            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-                            gap: 16px;
-                            margin: 16px 0;
-                        }
-                        
-                        .thn-pdf .financial-total {
-                            background: #ffffff;
-                            border: 2px solid #000000;
-                            border-radius: 8px;
-                            padding: 16px;
+                        .thn-pdf .bottom-disclaimer {
+                            margin-top: 20px;
+                            font-size: 16px;
                             text-align: center;
-                        }
-
-                        .thn-pdf .financial-balance {
-                            background: #ffffff;
-                            border: 2px solid #000000;
-                            border-radius: 8px;
-                            padding: 16px;
-                            text-align: center;
+                            border-top: 1px solid #000;
+                            padding-top: 5px;
+                            font-weight: bold;
                         }
                         
                         @media print {
-                            #thn-pdf {
-                                transform: none !important;
-                                width: 100% !important;
-                                padding: 15px !important;
-                                box-shadow: none !important;
-                                border: none !important;
-                            }
-                            
+                            body { margin: 0; padding: 0; }
                             .thn-pdf {
-                                page-break-inside: avoid;
-                                font-size: 11px;
-                                width: 100%;
-                            }
-                            
-                            .thn-pdf .section {
-                                margin-bottom: 14px;
-                                page-break-inside: avoid;
-                            }
-                            
-                            .thn-pdf .grid-2 {
-                                display: grid !important;
-                                grid-template-columns: 1fr 1fr !important;
-                                gap: 14px !important;
-                            }
-                            
-                            .thn-pdf .grid-4 {
-                                display: grid !important;
-                                grid-template-columns: 1fr 1fr 1fr 1fr !important;
-                                gap: 10px !important;
-                            }
-                            
-                            .thn-pdf .border-section {
-                                border: 1px solid #000 !important;
-                                padding: 12px !important;
-                                margin-bottom: 10px !important;
-                                background: #ffffff !important;
-                                box-shadow: none !important;
-                            }
-                            
-                            .thn-pdf .header-bg {
-                                background: #1e40af !important;
+                                width: 100% !important;
                                 padding: 20px !important;
-                                margin-bottom: 20px !important;
-                                box-shadow: none !important;
-                                page-break-inside: avoid !important;
-                            }
-                            
-                            .thn-pdf .info-row {
-                                padding: 6px 0 !important;
-                                border-bottom: 1px solid #d1d5db !important;
-                            }
-                            
-                            .thn-pdf .info-row:hover {
-                                background-color: transparent !important;
+                                border: none !important;
                                 margin: 0 !important;
-                                padding: 6px 0 !important;
+                                box-shadow: none !important;
                             }
-                            
-                            .thn-pdf .label {
-                                font-size: 10px !important;
-                                min-width: 120px !important;
-                            }
-                            
-                            .thn-pdf .value {
-                                font-size: 11px !important;
-                            }
-                            
-                            .thn-pdf .section-title {
-                                font-size: 12px !important;
-                                margin-bottom: 10px !important;
-                                padding-bottom: 6px !important;
-                            }
-                            
-                            .thn-pdf .highlight-box {
-                                padding: 14px !important;
-                                margin: 12px 0 !important;
-                                background: #f0f9ff !important;
-                                border: 1.5px solid #3b82f6 !important;
-                            }
-                            
-                            .thn-pdf .signature-section {
-                                padding: 18px !important;
-                                border: 1.5px dashed #6b7280 !important;
-                            }
-                            
-                            .thn-pdf .signature-line {
-                                height: 1px !important;
-                                margin: 8px auto !important;
-                            }
+                            .no-print { display: none !important; }
                         }
                     `}</style>
-                
-                {/* Company Header - Outside boxes */}
-                <div className="mb-6 pb-4 pt-6" style={{ position: 'relative', width: '100%', overflow: 'visible', boxSizing: 'border-box', paddingTop: '24px' }}>
-                    {/* Company Name/Details Centered in Header */}
-                    <div className="text-center" style={{ width: '100%', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px', boxSizing: 'border-box', overflow: 'visible' }}>
-                        <h1 className="font-bold text-black uppercase leading-tight mb-6" style={{ fontSize: '48px', letterSpacing: '0.5px', fontWeight: '900', marginBottom: '24px', whiteSpace: 'nowrap', overflow: 'visible', textOverflow: 'clip', width: '100%', display: 'block', lineHeight: '1.1' }}>
-                            {companyInfo?.name || 'ALL INDIA LOGISTICS CHENNAI'}
-                        </h1>
 
-                        {/* Company Details - Bold and Bigger */}
-                        <div className="text-center mb-6">
-                            <p className="text-black text-xl font-bold mb-1" style={{ fontWeight: '700' }}>{companyInfo?.address || 'Company Address'}</p>
-                            <p className="text-black text-xl font-bold mb-1" style={{ fontWeight: '700' }}>
-                                PH: {companyInfo?.phone1 || 'N/A'} / {companyInfo?.phone2 || 'N/A'}
-                            </p>
-                            <div className="flex items-center justify-center gap-4 text-black text-xl font-bold mb-1">
-                                <span className="font-bold" style={{ fontWeight: '700' }}>E-Mail:- {companyInfo?.email || 'N/A'}</span>
-                                <span className="font-bold" style={{ fontWeight: '700' }}>Web :- {companyInfo?.website || 'N/A'}</span>
-                            </div>
-                            <p className="font-bold text-xl mt-1 text-black" style={{ fontWeight: '700' }}>GSTIN: {companyInfo?.gstin || 'N/A'}</p>
+                    {/* Header */}
+                    <div className="header">
+                        <div className="contact-box">
+                            <div>Mob.: {companyInfo?.phone1}</div>
+                            {companyInfo?.phone2 && <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{companyInfo.phone2}</div>}
                         </div>
-
-                        {/* Document Title */}
-                        <h2 className="text-3xl font-bold text-black mb-4 tracking-wide" style={{ letterSpacing: '2px', fontSize: '32px', fontWeight: '700' }}>TRUCK HIRING NOTE</h2>
-
-                        {/* THN Details */}
-                        <div className="flex justify-center items-center gap-8 flex-wrap">
-                            <div className="bg-black text-white px-6 py-3 rounded">
-                                <span className="font-semibold text-lg">THN No:</span>
-                                <span className="font-black text-xl ml-2">#{thn.thnNumber}</span>
-                            </div>
-                            <div className="bg-black text-white px-6 py-3 rounded">
-                                <span className="font-semibold text-lg">Date:</span>
-                                <span className="font-black text-xl ml-2">{formatDate(thn.date)}</span>
-                            </div>
+                        
+                        <div className="jai-notes">
+                            !! Jai Bajrang Bali !!<br/>
+                            !! Jai Dada Nath !!
                         </div>
+                        
+                        <div className="advance-memo-box">TRUCK HIRE</div>
+                        
+                        <div className="company-name">{companyInfo?.name}</div>
+                        <div className="sub-header">Transport Contractors & Commission Agents</div>
+                        <div className="address">{companyInfo?.address}</div>
+                        <div className="email">E-mail: {companyInfo?.email}</div>
                     </div>
-                </div>
 
-                {/* Trip Route Information - Highlighted */}
-                <div className="trip-route no-break">
-                    <div className="flex items-center justify-between">
-                        <div className="flex-1 text-center">
-                            <div className="text-xs font-semibold text-gray-600 uppercase mb-1">From</div>
-                            <div className="text-base font-bold text-gray-900">{thn.loadingLocation}</div>
-                        </div>
-                        <div className="flex items-center mx-4">
-                            <div className="w-12 h-0.5 bg-blue-600"></div>
-                            <div className="mx-2 text-blue-600 font-bold">→</div>
-                            <div className="w-12 h-0.5 bg-blue-600"></div>
-                        </div>
-                        <div className="flex-1 text-center">
-                            <div className="text-xs font-semibold text-gray-600 uppercase mb-1">To</div>
-                            <div className="text-base font-bold text-gray-900">{thn.unloadingLocation}</div>
-                        </div>
-                    </div>
-                </div>
+                    <div style={{ borderBottom: '2px solid #000', margin: '10px 0' }}></div>
 
-                {/* Main Content Grid */}
-                <div className="grid-2 no-break">
-                    {/* Vehicle Information */}
-                    <div className="border-section">
-                        <div className="section-title">
-                            <span>🚛</span>
-                            <span>Vehicle Details</span>
+                    {/* Meta Info */}
+                    <div className="meta-row">
+                        <div>
+                            <span className="label">No.</span>
+                            <span className="value" style={{ fontSize: '24px' }}>{thn.thnNumber}</span>
                         </div>
-                        <div className="info-row">
-                            <span className="label">Truck Number</span>
-                            <span className="value font-semibold">{thn.truckNumber}</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Truck Type</span>
-                            <span className="value">{thn.truckType}</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Capacity</span>
-                            <span className="value">{thn.vehicleCapacity} tons</span>
+                        <div>
+                            <span className="label">Date :</span>
+                            <span className="value">{formatDate(thn.date)}</span>
                         </div>
                     </div>
 
-                    {/* Party Information */}
-                    <div className="border-section">
-                        <div className="section-title">
-                            <span>👥</span>
-                            <span>Party Details</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Agency Name</span>
-                            <span className="value font-semibold">{thn.agencyName}</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Owner Name</span>
-                            <span className="value">{thn.truckOwnerName}</span>
-                        </div>
-                        {thn.truckOwnerContact && (
-                            <div className="info-row">
-                                <span className="label">Contact</span>
-                                <span className="value">{thn.truckOwnerContact}</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Trip & Cargo Information */}
-                <div className="grid-2 no-break">
-                    <div className="border-section">
-                        <div className="section-title">
-                            <span>📍</span>
-                            <span>Trip Schedule</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Loading Date & Time</span>
-                            <span className="value">{thn.loadingDateTime ? formatDate(thn.loadingDateTime) : 'N/A'}</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Expected Delivery</span>
-                            <span className="value">{thn.expectedDeliveryDate ? formatDate(thn.expectedDeliveryDate) : 'N/A'}</span>
-                        </div>
-                    </div>
-
-                    <div className="border-section">
-                        <div className="section-title">
-                            <span>📦</span>
-                            <span>Cargo Information</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Goods Type</span>
-                            <span className="value">{thn.goodsType}</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Payment Mode</span>
-                            <span className="value">{thn.paymentMode}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Enhanced Financial Summary */}
-                <div className="highlight-box no-break">
-                    <div className="section-title">
-                        <span>💰</span>
-                        <span>Financial Summary</span>
-                    </div>
-
-                    <div className="financial-grid">
-                        <div className="info-row">
-                            <span className="label">Freight Rate</span>
-                            <span className="value amount">₹{thn.freightRate.toLocaleString('en-IN')}</span>
-                        </div>
-                        <div className="info-row">
-                            <span className="label">Rate Type</span>
-                            <span className="value">{thn.freightRateType.replace('_', ' ').toUpperCase()}</span>
-                        </div>
-                        {thn.additionalCharges > 0 && (
-                        <div className="info-row">
-                            <span className="label">Additional Charges</span>
-                            <span className="value amount">₹{(thn.additionalCharges || 0).toLocaleString('en-IN')}</span>
-                        </div>
-                        )}
-                        <div className="info-row">
-                            <span className="label">Advance Paid</span>
-                            <span className="value amount">₹{thn.advanceAmount.toLocaleString('en-IN')}</span>
-                        </div>
-                    </div>
-
-                    <div className="grid-2 mt-6 pt-6 border-t-2 border-gray-400">
-                        <div className="financial-total">
-                            <div className="text-xs font-semibold text-gray-600 uppercase mb-2">Total Amount</div>
-                            <div className="text-2xl font-black text-black">
-                                ₹{(thn.freightRate + (thn.additionalCharges || 0)).toLocaleString('en-IN')}
+                    {/* Main Content */}
+                    <div className="content-body">
+                        {/* Broker Name Line */}
+                        <div className="row">
+                            <span className="label">Broker's Name:</span>
+                            <div style={{ flex: 1, fontWeight: 'bold' }}>
+                                &nbsp;{thn.agencyName}
                             </div>
                         </div>
-                        <div className="financial-balance">
-                            <div className="text-xs font-semibold text-gray-600 uppercase mb-2">Balance Amount</div>
-                            <div className="text-2xl font-black text-black">
-                                ₹{thn.balanceAmount.toLocaleString('en-IN')}
-                            </div>
-                        </div>
-                    </div>
 
-                    {/* Amount in Words */}
-                    <div className="mt-4 pt-4 border-t-2 border-gray-400">
-                        <div className="text-sm">
-                            <span className="font-semibold">Amount in Words: </span>
-                            <span className="font-bold">{numberToWords(Math.round(thn.freightRate + (thn.additionalCharges || 0)))} Only</span>
-                        </div>
-                    </div>
-                </div>
 
-                {/* Payment Terms & Additional Info */}
-                <div className="grid-2 no-break">
-                    {thn.paymentTerms && (
-                        <div className="border-section">
-                            <div className="section-title">
-                                <span>📋</span>
-                                <span>Payment Terms</span>
-                            </div>
-                            <p className="text-sm text-gray-700 leading-relaxed mt-2">{thn.paymentTerms}</p>
+                        <div className="row">
+                            <span className="label">Truck No.</span>
+                            <span className="field-line" style={{ minWidth: '150px', textAlign: 'center' }}>{thn.truckNumber}</span>
                         </div>
-                    )}
 
-                    {(thn.linkedLR || thn.linkedInvoice || thn.remarks) && (
-                        <div className="border-section">
-                            <div className="section-title">
-                                <span>📝</span>
-                                <span>Additional Information</span>
+                        {/* Details Grid */}
+                        <div style={{ marginTop: '20px' }}>
+                            <div className="row">
+                                <span className="label">From :</span>
+                                <span className="field-line" style={{ flex: 1 }}>{thn.loadingLocation}</span>
+                                <span className="label" style={{ margin: '0 10px' }}>To :</span>
+                                <span className="field-line" style={{ flex: 1 }}>{thn.unloadingLocation}</span>
                             </div>
-                            {thn.linkedLR && (
-                                <div className="info-row">
-                                    <span className="label">Linked LR</span>
-                                    <span className="value">{thn.linkedLR}</span>
+
+                            <div className="row">
+                                <span className="label">Loading Point :</span>
+                                <span className="field-line" style={{ flex: 1 }}>{thn.loadingLocation}</span>
+                            </div>
+
+                            {/* Row: Total Hire & Weight */}
+                            <div className="row-spaced">
+                                <div style={{ display: 'flex', alignItems: 'baseline', flex: 1 }}>
+                                    <span className="label">Total Truck Hire.</span>
+                                    <span className="field-line" style={{ flex: 1 }}>{thn.advanceAmount}rs</span>
                                 </div>
-                            )}
-                            {thn.linkedInvoice && (
-                                <div className="info-row">
-                                    <span className="label">Linked Invoice</span>
-                                    <span className="value">{thn.linkedInvoice}</span>
-                                </div>
-                            )}
-                            {thn.remarks && (
-                                <div className="mt-3">
-                                    <div className="label mb-2">Remarks</div>
-                                    <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 p-3 rounded border border-gray-200">{thn.remarks}</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {/* Bank Details */}
-                {companyInfo?.currentBankAccount && (
-                    <div className="border-section no-break mt-6">
-                        <div className="section-title">
-                            <span>🏦</span>
-                            <span>Bank Details for Payment</span>
-                        </div>
-                        <div className="grid-2 gap-6">
-                            <div>
-                                <div className="info-row">
-                                    <span className="label">Bank Name</span>
-                                    <span className="value font-semibold">{companyInfo.currentBankAccount.bankName}</span>
-                                </div>
-                                <div className="info-row">
-                                    <span className="label">Account Number</span>
-                                    <span className="value font-semibold">{companyInfo.currentBankAccount.accountNumber}</span>
-                                </div>
-                                <div className="info-row">
-                                    <span className="label">Account Type</span>
-                                    <span className="value">{companyInfo.currentBankAccount.accountType}</span>
+                                <div style={{ display: 'flex', alignItems: 'baseline', marginLeft: '20px', minWidth: '200px' }}>
+                                    <span className="label">Weight :</span>
+                                    <span className="field-line" style={{ flex: 1 }}>{thn.vehicleCapacity} {thn.weightUnit || 'Tons'}</span>
                                 </div>
                             </div>
-                            <div>
-                                <div className="info-row">
-                                    <span className="label">IFSC Code</span>
-                                    <span className="value font-semibold">{companyInfo.currentBankAccount.ifscCode}</span>
-                                </div>
-                                <div className="info-row">
-                                    <span className="label">Branch</span>
-                                    <span className="value">{companyInfo.currentBankAccount.branch}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
-                {/* Enhanced Signatures */}
-                <div className="grid-2 no-break mt-8">
-                    <div className="signature-section">
-                        <div className="text-sm font-semibold text-gray-700 mb-4">AGENCY SIGNATURE</div>
-                        <div className="flex-1 flex items-center justify-center">
-                            <div className="w-full">
-                                <div className="signature-line"></div>
-                                <div className="signature-line"></div>
+                            {/* Row: Dates */}
+                            <div className="row-spaced" style={{ marginTop: '20px' }}>
+                                <div style={{ display: 'flex', alignItems: 'baseline' }}>
+                                    <span className="label">Unloading Date :</span>
+                                    <span className="field-line" style={{ minWidth: '150px' }}>
+                                        {thn.expectedDeliveryDate ? formatDate(thn.expectedDeliveryDate) : ''}
+                                    </span>
+                                </div> 
+                                <div style={{ display: 'flex', alignItems: 'baseline' }}>
+                                    <span className="label">POD Date :</span>
+                                    <span style={{ borderBottom: '1px dotted #000', minWidth: '150px', display: 'inline-block' }}>&nbsp;</span>
+                                </div>
                             </div>
-                        </div>
-                        <div className="mt-4">
-                            <p className="text-base text-gray-900 font-bold">{thn.agencyName}</p>
-                            <p className="text-xs text-gray-600 mt-1">Authorized Signatory</p>
+
                         </div>
                     </div>
-                    <div className="signature-section">
-                        <div className="text-sm font-semibold text-gray-700 mb-4">TRUCK OWNER SIGNATURE</div>
-                        <div className="flex-1 flex items-center justify-center">
-                            <div className="w-full">
-                                <div className="signature-line"></div>
-                                <div className="signature-line"></div>
-                            </div>
-                        </div>
-                        <div className="mt-4">
-                            <p className="text-base text-gray-900 font-bold">{thn.truckOwnerName}</p>
-                            <p className="text-xs text-gray-600 mt-1">Truck Owner</p>
-                        </div>
+
+                    <div className="bottom-disclaimer">
+                        We are not responsible for leakage, breakage, fire, theft or damages, and natural calamities due to.<br/>
+                        Specialist In : 20ft, 32ft SXL, MXL, HQ 7 MT, 9MT, 15MT, 18 MT, 21MT, 25MT for All Over India
                     </div>
-                </div>
+
                 </div>
             </div>
             <PDFViewerComponent />

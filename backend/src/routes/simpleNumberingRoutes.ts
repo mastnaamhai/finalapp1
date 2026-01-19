@@ -2,13 +2,59 @@ import express, { Request, Response } from 'express';
 import NumberingConfig from '../models/numbering';
 import Invoice from '../models/invoice';
 import LorryReceipt from '../models/lorryReceipt';
+import TruckHiringNote from '../models/truckHiringNote';
 
 const router = express.Router();
 
 // Get all numbering configurations
 router.get('/configs', async (req: Request, res: Response) => {
   try {
-    const configs = await NumberingConfig.find({});
+    let configs = await NumberingConfig.find({});
+
+    // If no configs exist, create default ones with synced current numbers
+    if (configs.length === 0) {
+      // Get max numbers from existing records
+      const [maxInvoice] = await Invoice.aggregate([
+        { $group: { _id: null, maxNumber: { $max: '$invoiceNumber' } } }
+      ]);
+
+      const [maxLr] = await LorryReceipt.aggregate([
+        { $group: { _id: null, maxNumber: { $max: '$lrNumber' } } }
+      ]);
+
+      const [maxThn] = await TruckHiringNote.aggregate([
+        { $group: { _id: null, maxNumber: { $max: '$thnNumber' } } }
+      ]);
+
+      const invoiceMax = maxInvoice?.maxNumber || 0;
+      const lrMax = maxLr?.maxNumber || 0;
+      const thnMax = maxThn?.maxNumber || 0;
+
+      // Create default configs
+      const defaultConfigs = [
+        {
+          type: 'invoice' as const,
+          startingNumber: 1001,
+          currentNumber: Math.max(1001, invoiceMax + 1),
+          prefix: 'INV',
+        },
+        {
+          type: 'consignment' as const,
+          startingNumber: 5001,
+          currentNumber: Math.max(5001, lrMax + 1),
+          prefix: 'LR',
+        },
+        {
+          type: 'truckHiringNoteId' as const,
+          startingNumber: 2001,
+          currentNumber: Math.max(2001, thnMax + 1),
+          prefix: 'THN',
+        },
+      ];
+
+      configs = await NumberingConfig.insertMany(defaultConfigs);
+    }
+
     res.json(configs);
   } catch (error) {
     console.error('Error fetching numbering configs:', error);
@@ -25,8 +71,8 @@ router.post('/configs', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid configuration data' });
     }
 
-    if (!['invoice', 'consignment'].includes(type)) {
-      return res.status(400).json({ message: 'Invalid type. Must be invoice or consignment' });
+    if (!['invoice', 'consignment', 'truckHiringNoteId'].includes(type)) {
+      return res.status(400).json({ message: 'Invalid type. Must be invoice, consignment, or truckHiringNoteId' });
     }
 
     const existingConfig = await NumberingConfig.findOne({ type });
@@ -86,13 +132,16 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
     }
 
     let isDuplicate = false;
-    
+
     if (type === 'invoice') {
       const existingInvoice = await Invoice.findOne({ invoiceNumber: number });
       isDuplicate = !!existingInvoice;
     } else if (type === 'consignment') {
       const existingLr = await LorryReceipt.findOne({ lrNumber: number });
       isDuplicate = !!existingLr;
+    } else if (type === 'truckHiringNoteId') {
+      const existingThn = await TruckHiringNote.findOne({ thnNumber: number });
+      isDuplicate = !!existingThn;
     }
 
     res.json({ isDuplicate });
@@ -106,13 +155,13 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
 router.get('/next/:type', async (req: Request, res: Response) => {
   try {
     const { type } = req.params;
-    
-    if (!['invoice', 'consignment'].includes(type)) {
+
+    if (!['invoice', 'consignment', 'truckHiringNoteId'].includes(type)) {
       return res.status(400).json({ message: 'Invalid type' });
     }
 
     const config = await NumberingConfig.findOne({ type });
-    
+
     if (!config) {
       return res.status(404).json({ message: 'Configuration not found' });
     }
@@ -123,13 +172,67 @@ router.get('/next/:type', async (req: Request, res: Response) => {
     config.currentNumber = nextNumber + 1;
     await config.save();
 
-    res.json({ 
-      number: nextNumber, 
+    res.json({
+      number: nextNumber,
       currentNumber: config.currentNumber
     });
   } catch (error) {
     console.error('Error getting next number:', error);
     res.status(500).json({ message: 'Error getting next number' });
+  }
+});
+
+// Sync current numbers based on existing records
+router.post('/sync-current', async (req: Request, res: Response) => {
+  try {
+    // Get max numbers from existing records
+    const [maxInvoice] = await Invoice.aggregate([
+      { $group: { _id: null, maxNumber: { $max: '$invoiceNumber' } } }
+    ]);
+
+    const [maxLr] = await LorryReceipt.aggregate([
+      { $group: { _id: null, maxNumber: { $max: '$lrNumber' } } }
+    ]);
+
+    const [maxThn] = await TruckHiringNote.aggregate([
+      { $group: { _id: null, maxNumber: { $max: '$thnNumber' } } }
+    ]);
+
+    const updates = [];
+
+    // Update invoice config
+    const invoiceMax = maxInvoice?.maxNumber || 0;
+    const invoiceConfig = await NumberingConfig.findOne({ type: 'invoice' });
+    if (invoiceConfig) {
+      const newCurrent = Math.max(invoiceConfig.currentNumber, invoiceMax + 1);
+      invoiceConfig.currentNumber = newCurrent;
+      updates.push(invoiceConfig.save());
+    }
+
+    // Update consignment config
+    const lrMax = maxLr?.maxNumber || 0;
+    const lrConfig = await NumberingConfig.findOne({ type: 'consignment' });
+    if (lrConfig) {
+      const newCurrent = Math.max(lrConfig.currentNumber, lrMax + 1);
+      lrConfig.currentNumber = newCurrent;
+      updates.push(lrConfig.save());
+    }
+
+    // Update THN config
+    const thnMax = maxThn?.maxNumber || 0;
+    const thnConfig = await NumberingConfig.findOne({ type: 'truckHiringNoteId' });
+    if (thnConfig) {
+      const newCurrent = Math.max(thnConfig.currentNumber, thnMax + 1);
+      thnConfig.currentNumber = newCurrent;
+      updates.push(thnConfig.save());
+    }
+
+    await Promise.all(updates);
+
+    res.json({ message: 'Current numbers synced successfully' });
+  } catch (error) {
+    console.error('Error syncing current numbers:', error);
+    res.status(500).json({ message: 'Error syncing current numbers' });
   }
 });
 

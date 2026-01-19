@@ -7,6 +7,7 @@ export interface ITruckHiringNote extends Document {
   truckNumber: string;
   truckType: string;
   vehicleCapacity: number;
+  weightUnit?: 'KG' | 'MT' | 'Tons';
   loadingLocation: string;
   unloadingLocation: string;
   loadingDateTime: string;
@@ -36,6 +37,11 @@ const TruckHiringNoteSchema = new Schema({
   truckNumber: { type: String, required: true },
   truckType: { type: String, required: true },
   vehicleCapacity: { type: Number, required: true },
+  weightUnit: {
+    type: String,
+    enum: ['KG', 'MT', 'Tons'],
+    default: 'Tons'
+  },
   loadingLocation: { type: String },
   unloadingLocation: { type: String },
   loadingDateTime: { type: String },
@@ -45,28 +51,28 @@ const TruckHiringNoteSchema = new Schema({
   truckOwnerName: { type: String, required: true },
   truckOwnerContact: { type: String },
   freightRate: { type: Number, required: true },
-  freightRateType: { 
-    type: String, 
-    enum: ['per_trip', 'per_ton', 'per_km'], 
+  freightRateType: {
+    type: String,
+    enum: ['per_trip', 'per_ton', 'per_km'],
     default: 'per_trip',
-    required: true 
+    required: true
   },
   advanceAmount: { type: Number, default: 0 },
   balanceAmount: { type: Number, required: true },
-  paymentMode: { 
-    type: String, 
-    enum: ['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Other'], 
-    required: true 
+  paymentMode: {
+    type: String,
+    enum: ['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Other'],
+    required: true
   },
   paymentTerms: { type: String },
   additionalCharges: { type: Number, default: 0 },
   remarks: { type: String },
   linkedLR: { type: String },
   linkedInvoice: { type: String },
-  status: { 
-    type: String, 
-    enum: Object.values(THNStatus), 
-    default: THNStatus.UNPAID 
+  status: {
+    type: String,
+    enum: Object.values(THNStatus),
+    default: THNStatus.UNPAID
   },
   paidAmount: { type: Number, default: 0 },
   payments: [{ type: Schema.Types.ObjectId, ref: 'Payment' }]

@@ -39,15 +39,40 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
     const noteData = createTruckHiringNoteSchema.parse(req.body);
     console.log('Validated data:', JSON.stringify(noteData, null, 2));
 
-    // Generate THN number
-    let nextThnNumber = Date.now(); // Fallback
-    const config = await NumberingConfig.findOne({ type: 'truckHiringNoteId' });
-    if (config) {
-      nextThnNumber = config.currentNumber;
-      config.currentNumber = config.currentNumber + 1;
-      await config.save();
+    // Handle THN number - either provided or auto-generated
+    let thnNumber: number;
+    if (noteData.thnNumber) {
+      // Manual THN number provided - validate uniqueness
+      const existingNote = await TruckHiringNote.findOne({ thnNumber: noteData.thnNumber });
+      if (existingNote) {
+        res.status(400).json({
+          message: 'THN number already exists',
+          errors: {
+            fieldErrors: { thnNumber: ['This THN number is already in use. Please choose a different number.'] }
+          }
+        });
+        return;
+      }
+      thnNumber = noteData.thnNumber;
+
+      // Update current number if manual number is higher
+      const config = await NumberingConfig.findOne({ type: 'truckHiringNoteId' });
+      if (config) {
+        config.currentNumber = Math.max(config.currentNumber, thnNumber + 1);
+        await config.save();
+      }
+    } else {
+      // Auto-generate THN number
+      let nextThnNumber = Date.now(); // Fallback
+      const config = await NumberingConfig.findOne({ type: 'truckHiringNoteId' });
+      if (config) {
+        nextThnNumber = config.currentNumber;
+        config.currentNumber = config.currentNumber + 1;
+        await config.save();
+      }
+      thnNumber = nextThnNumber;
     }
-    console.log('Generated THN number:', nextThnNumber);
+    console.log('Using THN number:', thnNumber);
     
     const totalAmount = noteData.freightRate + (noteData.additionalCharges || 0);
     const advanceAmount = noteData.advanceAmount || 0;
@@ -62,7 +87,7 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
     }
 
     const note = new TruckHiringNote({
-      thnNumber: nextThnNumber,
+      thnNumber,
       ...noteData,
       advanceAmount,
       balanceAmount,

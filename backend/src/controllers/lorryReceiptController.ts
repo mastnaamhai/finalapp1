@@ -60,8 +60,8 @@ export const createLorryReceipt = asyncHandler(async (req: Request, res: Respons
     
     // Use custom LR number if provided, otherwise generate one
     let lrNumber = lrData.lrNumber;
+    let config = await NumberingConfig.findOne({ type: 'consignment' });
     if (!lrNumber) {
-      let config = await NumberingConfig.findOne({ type: 'consignment' });
       if (!config) {
         // Initialize numbering config for consignment if it doesn't exist
         config = await NumberingConfig.create({
@@ -72,7 +72,7 @@ export const createLorryReceipt = asyncHandler(async (req: Request, res: Respons
         });
         console.log('Created new consignment numbering config');
       }
-      
+
       lrNumber = config.currentNumber;
       config.currentNumber = config.currentNumber + 1;
       await config.save();
@@ -81,12 +81,18 @@ export const createLorryReceipt = asyncHandler(async (req: Request, res: Respons
       // Validate manual entry for uniqueness
       const existingLr = await LorryReceipt.findOne({ lrNumber });
       if (existingLr) {
-        res.status(400).json({ 
-          message: 'Consignment number already exists. Please enter a different number.' 
+        res.status(400).json({
+          message: 'Consignment number already exists. Please enter a different number.'
         });
         return;
       }
       console.log('Using custom Consignment number:', lrNumber);
+
+      // Update current number if manual number is higher
+      if (config) {
+        config.currentNumber = Math.max(config.currentNumber, lrNumber + 1);
+        await config.save();
+      }
     }
     
     const lorryReceipt = new LorryReceipt({
