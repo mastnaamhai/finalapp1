@@ -229,14 +229,14 @@ export const Clients = ({ customers, onSave, onDelete, onBack }: ClientsProps) =
             const searchLower = searchTerm.toLowerCase();
             const searchUpper = searchTerm.toUpperCase();
             return (
-                customer.name.toLowerCase().includes(searchLower) ||
+                (customer.name || '').toLowerCase().includes(searchLower) ||
                 (customer.tradeName && customer.tradeName.toLowerCase().includes(searchLower)) ||
                 (customer.gstin && (customer.gstin.toLowerCase().includes(searchLower) || customer.gstin.includes(searchUpper))) ||
-                customer.state.toLowerCase().includes(searchLower) ||
+                (customer.state || '').toLowerCase().includes(searchLower) ||
                 (customer.contactPerson && customer.contactPerson.toLowerCase().includes(searchLower)) ||
                 (customer.contactPhone && customer.contactPhone.includes(searchTerm)) ||
                 (customer.contactEmail && customer.contactEmail.toLowerCase().includes(searchLower)) ||
-                customer.address.toLowerCase().includes(searchLower)
+                (customer.address || '').toLowerCase().includes(searchLower)
             );
         });
 
@@ -247,12 +247,12 @@ export const Clients = ({ customers, onSave, onDelete, onBack }: ClientsProps) =
             
             switch (sortBy) {
                 case 'name':
-                    aValue = a.name.toLowerCase();
-                    bValue = b.name.toLowerCase();
+                    aValue = (a.name || '').toLowerCase();
+                    bValue = (b.name || '').toLowerCase();
                     break;
                 case 'state':
-                    aValue = a.state.toLowerCase();
-                    bValue = b.state.toLowerCase();
+                    aValue = (a.state || '').toLowerCase();
+                    bValue = (b.state || '').toLowerCase();
                     break;
                 case 'gstin':
                     aValue = a.gstin || '';
