@@ -29,6 +29,7 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
         loadingLocation: '',
         unloadingLocation: '',
         expectedDeliveryDate: '',
+        podDate: '',
         agencyName: '',
         brokerContact: '',
         freightRate: 0,
@@ -308,8 +309,8 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
                                 </div>
                             </div>
 
-                            {/* Row 4: Balance, Unloading Date */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                            {/* Row 4: Balance, Unloading Date, POD Date */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Balance Truck Hire (₹)
@@ -326,6 +327,18 @@ export const TruckHiringNoteForm = ({ existingNote, companyInfo, onSave, onCance
                                         label=""
                                         name="expectedDeliveryDate"
                                         value={note.expectedDeliveryDate || ''}
+                                        onChange={handleChange}
+                                        type="date"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        POD Date (Optional)
+                                    </label>
+                                    <Input
+                                        label=""
+                                        name="podDate"
+                                        value={note.podDate || ''}
                                         onChange={handleChange}
                                         type="date"
                                     />

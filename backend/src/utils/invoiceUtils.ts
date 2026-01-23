@@ -7,8 +7,6 @@ export const updateInvoiceStatus = async (invoiceId: string) => {
   try {
     const invoice = await Invoice.findById(invoiceId);
     if (!invoice) {
-      // Invoice might have been deleted, so we just log this.
-      console.log(`Invoice with ID ${invoiceId} not found for status update.`);
       return;
     }
 

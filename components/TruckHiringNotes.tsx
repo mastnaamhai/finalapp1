@@ -6,10 +6,16 @@ import { TruckHiringNoteForm } from './TruckHiringNoteForm';
 import { UniversalPaymentForm } from './UniversalPaymentForm';
 import { UniversalPaymentHistoryModal } from './UniversalPaymentHistoryModal';
 import { formatDate } from '../services/utils';
-import type { View } from '../App';
 import { Pagination } from './ui/Pagination';
 import { StatusBadge, getStatusVariant } from './ui/StatusBadge';
 import { UniversalSearchSort, SortOption } from './ui/UniversalSearchSort';
+import { ConfirmationModal } from './ui/ConfirmationModal';
+
+interface View {
+    name: string;
+    id?: string;
+    filters?: any;
+}
 
 interface TruckHiringNotesProps {
     notes: TruckHiringNote[];
@@ -30,20 +36,24 @@ interface THNTableFilters {
     sortOrder: 'asc' | 'desc';
 }
 
-export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({ 
-    notes, payments, companyInfo, onSave, onUpdate, onDelete, onSavePayment, onViewChange, onBack, initialFilters 
+export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
+    notes, payments, companyInfo, onSave, onUpdate, onDelete, onSavePayment, onViewChange, onBack, initialFilters
 }) => {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingNote, setEditingNote] = useState<TruckHiringNote | undefined>(undefined);
     const [isPaymentFormOpen, setIsPaymentFormOpen] = useState(false);
     const [isPaymentHistoryOpen, setIsPaymentHistoryOpen] = useState(false);
+    const [isPodDateModalOpen, setIsPodDateModalOpen] = useState(false);
+    const [isPodDateSaving, setIsPodDateSaving] = useState(false);
     const [selectedNoteForPayment, setSelectedNoteForPayment] = useState<TruckHiringNote | null>(null);
     const [selectedNoteForHistory, setSelectedNoteForHistory] = useState<TruckHiringNote | null>(null);
+    const [selectedNoteForPodDate, setSelectedNoteForPodDate] = useState<TruckHiringNote | null>(null);
+    const [podDate, setPodDate] = useState('');
 
     const [searchTerm, setSearchTerm] = useState(initialFilters?.searchTerm || '');
     const [sortBy, setSortBy] = useState(initialFilters?.sortBy || 'thnNumber');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(initialFilters?.sortOrder || 'desc');
-    
+
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -83,7 +93,7 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
         filtered.sort((a, b) => {
             let aValue: any = '';
             let bValue: any = '';
-            
+
             switch (sortBy) {
                 case 'thnNumber':
                     aValue = a.thnNumber;
@@ -118,8 +128,8 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
                     bValue = b.freightRate || 0;
                     break;
                 case 'totalAmount':
-                    aValue = a.totalAmount || (a.freightRate + (a.additionalCharges || 0));
-                    bValue = b.totalAmount || (b.freightRate + (b.additionalCharges || 0));
+                    aValue = (a.freightRate + (a.additionalCharges || 0));
+                    bValue = (b.freightRate + (b.additionalCharges || 0));
                     break;
                 case 'balanceAmount':
                     aValue = a.balanceAmount || 0;
@@ -133,7 +143,7 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
                     aValue = a.thnNumber;
                     bValue = b.thnNumber;
             }
-            
+
             if (sortOrder === 'asc') {
                 return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
             } else {
@@ -209,6 +219,43 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
         }
     };
 
+    const handleAddPodDate = (note: TruckHiringNote) => {
+        setSelectedNoteForPodDate(note);
+        setPodDate(note.podDate || '');
+        setIsPodDateModalOpen(true);
+    };
+
+    const handleSavePodDate = async (_password?: string) => {
+        if (selectedNoteForPodDate && !isPodDateSaving) {
+            setIsPodDateSaving(true);
+            try {
+                const updateData = { podDate: podDate.trim() || undefined };
+                console.log('Saving POD date:', podDate.trim() || undefined);
+                console.log('Update data being sent:', JSON.stringify(updateData, null, 2));
+                console.log('Calling onUpdate with ID:', selectedNoteForPodDate._id);
+                await onUpdate(selectedNoteForPodDate._id, updateData);
+                setIsPodDateModalOpen(false);
+                setSelectedNoteForPodDate(null);
+                setPodDate('');
+            } catch (error) {
+                console.error('Failed to update POD date:', error);
+                alert('Failed to update POD date. Please try again.');
+                // Close modal even on error to prevent stuck modal
+                setIsPodDateModalOpen(false);
+                setSelectedNoteForPodDate(null);
+                setPodDate('');
+            } finally {
+                setIsPodDateSaving(false);
+            }
+        }
+    };
+
+    const handleClosePodDateModal = () => {
+        setIsPodDateModalOpen(false);
+        setSelectedNoteForPodDate(null);
+        setPodDate('');
+    };
+
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'Paid': return 'text-green-600 bg-green-100';
@@ -228,12 +275,12 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
                     onCancel={() => setIsFormOpen(false)}
                 />
             )}
-            
+
             {isPaymentFormOpen && selectedNoteForPayment && (
                 <UniversalPaymentForm
                     truckHiringNoteId={selectedNoteForPayment._id}
                     customerId={undefined} // No customer for THN payments
-                    grandTotal={selectedNoteForPayment.totalAmount || (selectedNoteForPayment.freightRate + (selectedNoteForPayment.additionalCharges || 0))}
+                    grandTotal={(selectedNoteForPayment.freightRate + (selectedNoteForPayment.additionalCharges || 0))}
                     balanceDue={selectedNoteForPayment.balanceAmount}
                     onSave={handleSavePayment}
                     onClose={() => {
@@ -253,6 +300,34 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
                         setSelectedNoteForHistory(null);
                     }}
                 />
+            )}
+
+            {isPodDateModalOpen && selectedNoteForPodDate && (
+                <ConfirmationModal
+                    isOpen={isPodDateModalOpen}
+                    onClose={handleClosePodDateModal}
+                    onConfirm={handleSavePodDate}
+                    title={`Add POD Date for THN #${selectedNoteForPodDate.thnNumber}`}
+                    message="Select the Proof of Delivery date:"
+                    confirmText="Save POD Date"
+                    cancelText="Cancel"
+                    isLoading={isPodDateSaving}
+                >
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            POD Date
+                        </label>
+                        <input
+                            type="date"
+                            value={podDate}
+                            onChange={(e) => setPodDate(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                            Leave empty to remove POD date
+                        </p>
+                    </div>
+                </ConfirmationModal>
             )}
 
             <Card>
@@ -299,8 +374,8 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {paginatedNotes.map(note => (
-                                <tr 
-                                    key={note._id} 
+                                <tr
+                                    key={note._id}
                                     className="hover:bg-slate-50 transition-colors duration-200 cursor-pointer"
                                     onClick={() => onViewChange({ name: 'VIEW_THN', id: note._id })}
                                 >
@@ -332,8 +407,8 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
                                         ₹{(note.freightRate || 0).toLocaleString('en-IN')}
-                                        {note.additionalCharges > 0 && (
-                                            <div className="text-xs text-gray-400">+₹{note.additionalCharges.toLocaleString('en-IN')}</div>
+                                        {(note.additionalCharges || 0) > 0 && (
+                                            <div className="text-xs text-gray-400">+₹{(note.additionalCharges || 0).toLocaleString('en-IN')}</div>
                                         )}
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-blue-600 text-right">
@@ -349,38 +424,45 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
                                         <StatusBadge status={note.status} variant={getStatusVariant(note.status)} size="sm" />
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); onViewChange({ name: 'VIEW_THN', id: note._id }); }} 
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onViewChange({ name: 'VIEW_THN', id: note._id }); }}
                                             className="text-indigo-600 hover:text-indigo-900 transition-colors"
                                             title="View PDF"
                                         >
                                             View PDF
                                         </button>
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); handleAddPayment(note); }} 
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleAddPayment(note); }}
                                             className="text-green-600 hover:text-green-900 transition-colors"
                                             title="Add Payment"
                                         >
                                             Payment
                                         </button>
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); handleViewPaymentHistory(note); }} 
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleViewPaymentHistory(note); }}
                                             className="text-purple-600 hover:text-purple-900 transition-colors"
                                             title="View Payment History"
                                         >
                                             History
                                         </button>
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); handleEdit(note); }} 
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleEdit(note); }}
                                             className="text-blue-600 hover:text-blue-900 transition-colors"
                                         >
                                             Edit
                                         </button>
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); handleDelete(note); }} 
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDelete(note); }}
                                             className="text-red-600 hover:text-red-900 transition-colors"
                                         >
                                             Delete
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleAddPodDate(note); }}
+                                            className="text-blue-600 hover:text-blue-900 transition-colors"
+                                            title="Add POD Date"
+                                        >
+                                            POD Date
                                         </button>
                                     </td>
                                 </tr>
@@ -395,7 +477,7 @@ export const TruckHiringNotes: React.FC<TruckHiringNotesProps> = ({
                         </tbody>
                     </table>
                 </div>
-                
+
                 {/* Pagination */}
                 <div className="mt-6">
                     <Pagination

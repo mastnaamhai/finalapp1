@@ -14,7 +14,6 @@ export const getTruckHiringNotes = asyncHandler(async (req: Request, res: Respon
   await Promise.all(notes.map(note => updateThnStatus(note._id.toString())));
   // Fetch again with updated values
   const updatedNotes = await TruckHiringNote.find().populate('payments').sort({ thnNumber: -1 });
-  console.log(`Returning ${updatedNotes.length} THNs with statuses:`, updatedNotes.map(n => ({ thnNumber: n.thnNumber, status: n.status, paidAmount: n.paidAmount, balanceAmount: n.balanceAmount })));
   res.json(updatedNotes);
 });
 
@@ -34,10 +33,7 @@ export const getTruckHiringNoteById = asyncHandler(async (req: Request, res: Res
 
 export const createTruckHiringNote = asyncHandler(async (req: Request, res: Response) => {
   try {
-    console.log('Received THN data:', JSON.stringify(req.body, null, 2));
-
     const noteData = createTruckHiringNoteSchema.parse(req.body);
-    console.log('Validated data:', JSON.stringify(noteData, null, 2));
 
     // Handle THN number - either provided or auto-generated
     let thnNumber: number;
@@ -72,12 +68,11 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
       }
       thnNumber = nextThnNumber;
     }
-    console.log('Using THN number:', thnNumber);
-    
+
     const totalAmount = noteData.freightRate + (noteData.additionalCharges || 0);
     const advanceAmount = noteData.advanceAmount || 0;
     const balanceAmount = Math.max(0, totalAmount - advanceAmount); // Ensure balance is never negative
-    
+
     // Determine initial status based on advance payment
     let initialStatus = THNStatus.UNPAID;
     if (balanceAmount <= 0) {
@@ -101,13 +96,11 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
     });
 
     const newNote = await note.save();
-    console.log('Saved THN:', newNote._id);
 
     // If there's an advance amount, create a corresponding Payment record
     if (advanceAmount > 0) {
       try {
-        console.log(`Creating advance payment record for THN ${newNote.thnNumber} with amount ${advanceAmount}`);
-        
+
         // Generate payment number
         let paymentNumber = Date.now(); // Fallback
         const paymentConfig = await NumberingConfig.findOne({ type: 'paymentId' });
@@ -116,7 +109,7 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
           paymentConfig.currentNumber = paymentConfig.currentNumber + 1;
           await paymentConfig.save();
         }
-        
+
         const advancePayment = new Payment({
           paymentNumber,
           truckHiringNoteId: newNote._id,
@@ -130,14 +123,11 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
         });
 
         const savedAdvancePayment = await advancePayment.save();
-        console.log('Saved advance payment:', savedAdvancePayment._id);
 
         // Update THN to include this payment
         await TruckHiringNote.findByIdAndUpdate(newNote._id, {
           $push: { payments: savedAdvancePayment._id }
         });
-
-        console.log('Updated THN with advance payment reference');
       } catch (paymentError) {
         console.error('Error creating advance payment record:', paymentError);
         // Don't fail the THN creation if payment record creation fails
@@ -148,11 +138,11 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
     // Populate the THN with payments before returning
     const populatedNote = await TruckHiringNote.findById(newNote._id)
       .populate('payments');
-    
+
     res.status(201).json(populatedNote);
   } catch (error) {
     console.error('Error creating THN:', error);
-    
+
     // Handle validation errors specifically
     if (error instanceof Error && error.name === 'ValidationError') {
       const validationErrors: { [key: string]: string[] } = {};
@@ -161,7 +151,7 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
           validationErrors[key] = [(error as any).errors[key].message];
         });
       }
-      
+
       res.status(400).json({
         message: 'Validation failed',
         errors: {
@@ -170,7 +160,7 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
       });
       return;
     }
-    
+
     // Handle Zod validation errors
     if (error instanceof Error && error.name === 'ZodError') {
       const zodErrors: { [key: string]: string[] } = {};
@@ -181,7 +171,7 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
           zodErrors[field].push(issue.message);
         });
       }
-      
+
       res.status(400).json({
         message: 'Validation failed',
         errors: {
@@ -190,9 +180,9 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
       });
       return;
     }
-    
-    res.status(500).json({ 
-      message: 'Failed to create truck hiring note', 
+
+    res.status(500).json({
+      message: 'Failed to create truck hiring note',
       error: error instanceof Error ? error.message : 'Unknown error',
       details: error
     });
@@ -201,6 +191,7 @@ export const createTruckHiringNote = asyncHandler(async (req: Request, res: Resp
 
 export const updateTruckHiringNote = asyncHandler(async (req: Request, res: Response) => {
   const updateData = updateTruckHiringNoteSchema.parse(req.body);
+
   const { freightRate, advanceAmount, additionalCharges } = updateData;
 
   const existingNote = await TruckHiringNote.findById(req.params.id);
@@ -214,7 +205,7 @@ export const updateTruckHiringNote = asyncHandler(async (req: Request, res: Resp
     const newFreightRate = freightRate !== undefined ? freightRate : existingNote.freightRate;
     const newAdvanceAmount = advanceAmount !== undefined ? advanceAmount : existingNote.advanceAmount;
     const newAdditionalCharges = additionalCharges !== undefined ? additionalCharges : (existingNote.additionalCharges || 0);
-    
+
     (updateData as any).freightRate = newFreightRate;
     (updateData as any).advanceAmount = newAdvanceAmount;
     (updateData as any).additionalCharges = newAdditionalCharges;
@@ -222,8 +213,7 @@ export const updateTruckHiringNote = asyncHandler(async (req: Request, res: Resp
 
     // Handle advance amount changes
     if (advanceAmount !== undefined && advanceAmount !== existingNote.advanceAmount) {
-      console.log(`Advance amount changed from ${existingNote.advanceAmount} to ${advanceAmount}`);
-      
+
       // Find existing advance payment record
       const existingAdvancePayment = await Payment.findOne({
         truckHiringNoteId: req.params.id,
@@ -238,19 +228,18 @@ export const updateTruckHiringNote = asyncHandler(async (req: Request, res: Resp
             amount: advanceAmount,
             date: updateData.date || existingNote.date
           });
-          console.log('Updated existing advance payment record');
         } else {
           // Create new advance payment record
           try {
             // Generate payment number
-        let paymentNumber = Date.now(); // Fallback
-        const paymentConfig = await NumberingConfig.findOne({ type: 'paymentId' });
-        if (paymentConfig) {
-          paymentNumber = paymentConfig.currentNumber;
-          paymentConfig.currentNumber = paymentConfig.currentNumber + 1;
-          await paymentConfig.save();
-        }
-            
+            let paymentNumber = Date.now(); // Fallback
+            const paymentConfig = await NumberingConfig.findOne({ type: 'paymentId' });
+            if (paymentConfig) {
+              paymentNumber = paymentConfig.currentNumber;
+              paymentConfig.currentNumber = paymentConfig.currentNumber + 1;
+              await paymentConfig.save();
+            }
+
             const advancePayment = new Payment({
               paymentNumber,
               truckHiringNoteId: req.params.id,
@@ -264,7 +253,6 @@ export const updateTruckHiringNote = asyncHandler(async (req: Request, res: Resp
             });
 
             const savedAdvancePayment = await advancePayment.save();
-            console.log('Created new advance payment record:', savedAdvancePayment._id);
 
             // Update THN to include this payment
             await TruckHiringNote.findByIdAndUpdate(req.params.id, {
@@ -280,7 +268,6 @@ export const updateTruckHiringNote = asyncHandler(async (req: Request, res: Resp
         await TruckHiringNote.findByIdAndUpdate(req.params.id, {
           $pull: { payments: existingAdvancePayment._id }
         });
-        console.log('Removed advance payment record');
       }
     }
   }
@@ -315,7 +302,7 @@ export const recalculateThnStatus = asyncHandler(async (req: Request, res: Respo
 
 export const deleteTruckHiringNote = asyncHandler(async (req: Request, res: Response) => {
   const note = await TruckHiringNote.findById(req.params.id);
-  
+
   if (!note) {
     res.status(404);
     throw new Error('Truck Hiring Note not found');
@@ -323,7 +310,6 @@ export const deleteTruckHiringNote = asyncHandler(async (req: Request, res: Resp
 
   // Delete associated payment records
   await Payment.deleteMany({ truckHiringNoteId: req.params.id });
-  console.log(`Deleted payment records for THN ${note.thnNumber}`);
 
   await TruckHiringNote.findByIdAndDelete(req.params.id);
   res.json({ message: 'Truck Hiring Note deleted successfully' });

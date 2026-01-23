@@ -16,6 +16,13 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
     const [isPrinting, setIsPrinting] = useState(false);
     const { openViewer, PDFViewerComponent } = usePDFViewer();
 
+    console.log('THNPdf - Received THN:', thn);
+    console.log('THNPdf - THN ID:', thn?._id);
+    console.log('THNPdf - THN expectedDeliveryDate:', thn?.expectedDeliveryDate);
+    console.log('THNPdf - THN podDate:', thn?.podDate);
+    console.log('THNPdf - Formatted expectedDeliveryDate:', thn?.expectedDeliveryDate ? formatDate(thn.expectedDeliveryDate) : 'EMPTY');
+    console.log('THNPdf - Formatted podDate:', thn?.podDate ? formatDate(thn.podDate) : 'EMPTY');
+
     const handleGeneratePdf = async () => {
         setIsGenerating(true);
         try {
@@ -353,7 +360,7 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
                             <div className="row-spaced">
                                 <div style={{ display: 'flex', alignItems: 'baseline', flex: 1 }}>
                                     <span className="label">Total Truck Hire.</span>
-                                    <span className="field-line" style={{ flex: 1 }}>{thn.advanceAmount}rs</span>
+                                    <span className="field-line" style={{ flex: 1 }}>₹{(thn.freightRate + (thn.additionalCharges || 0)).toLocaleString('en-IN')}</span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'baseline', marginLeft: '20px', minWidth: '200px' }}>
                                     <span className="label">Weight :</span>
@@ -361,20 +368,67 @@ export const THNPdf: React.FC<THNPdfProps> = ({ thn, companyInfo, onBack }) => {
                                 </div>
                             </div>
 
+                            {/* Row: Advance Amount */}
+                            <div className="row">
+                                <span className="label">Advance Amount:</span>
+                                <span className="field-line" style={{ flex: 1 }}>₹{(thn.advanceAmount || 0).toLocaleString('en-IN')}</span>
+                            </div>
+
                             {/* Row: Dates */}
                             <div className="row-spaced" style={{ marginTop: '20px' }}>
                                 <div style={{ display: 'flex', alignItems: 'baseline' }}>
                                     <span className="label">Unloading Date :</span>
                                     <span className="field-line" style={{ minWidth: '150px' }}>
-                                        {thn.expectedDeliveryDate ? formatDate(thn.expectedDeliveryDate) : ''}
+                                        {thn.expectedDeliveryDate ? formatDate(thn.expectedDeliveryDate) : 'N/A'}
                                     </span>
-                                </div> 
+                                </div>
                                 <div style={{ display: 'flex', alignItems: 'baseline' }}>
                                     <span className="label">POD Date :</span>
-                                    <span style={{ borderBottom: '1px dotted #000', minWidth: '150px', display: 'inline-block' }}>&nbsp;</span>
+                                    <span className="field-line" style={{ minWidth: '150px' }}>
+                                        {thn.podDate ? formatDate(thn.podDate) : 'N/A'}
+                                    </span>
                                 </div>
                             </div>
 
+                        </div>
+
+                        {/* Payment Summary Section */}
+                        <div style={{ marginTop: '30px', padding: '15px', border: '2px solid #374151', borderRadius: '10px', backgroundColor: '#f9f9f9' }}>
+                            <div style={{ textAlign: 'center', fontSize: '20px', fontWeight: 'bold', color: '#dc2626', marginBottom: '15px' }}>
+                                PAYMENT SUMMARY
+                            </div>
+                            <div style={{ marginBottom: '15px' }}>
+                                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>Payment Breakdown:</div>
+                                <div style={{ marginLeft: '10px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '14px' }}>
+                                        <span>├── Advance Paid:</span>
+                                        <span>₹{(thn.advanceAmount || 0).toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '14px' }}>
+                                        <span>├── Balance Amount:</span>
+                                        <span>₹{((thn.freightRate + (thn.additionalCharges || 0)) - (thn.advanceAmount || 0)).toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' }}>
+                                        <span>└── Total Paid:</span>
+                                        <span>₹{(thn.paidAmount || 0).toLocaleString('en-IN')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px' }}>
+                                <span style={{ fontWeight: 'bold' }}>Balance Due:</span>
+                                <span style={{ fontWeight: 'bold', color: (thn.balanceAmount || 0) > 0 ? '#dc2626' : '#16a34a' }}>
+                                    ₹{(thn.balanceAmount || 0).toLocaleString('en-IN')}
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ fontWeight: 'bold' }}>Status:</span>
+                                <span style={{
+                                    fontWeight: 'bold',
+                                    color: thn.status === 'Paid' ? '#16a34a' : thn.status === 'Partially Paid' ? '#ca8a04' : '#dc2626'
+                                }}>
+                                    {thn.status}
+                                </span>
+                            </div>
                         </div>
                     </div>
 

@@ -1,15 +1,15 @@
-import type { 
-  Customer, 
-  Invoice, 
-  Payment, 
+import type {
+  Customer,
+  Invoice,
+  Payment,
   TruckHiringNote
 } from '../types';
 import { PaymentType, PaymentMode } from '../types';
-import type { 
-  LedgerTransaction, 
-  ClientLedgerEntry, 
-  CompanyLedgerEntry, 
-  ClientLedgerData, 
+import type {
+  LedgerTransaction,
+  ClientLedgerEntry,
+  CompanyLedgerEntry,
+  ClientLedgerData,
   CompanyLedgerData,
   LedgerSummary,
   LedgerFilters
@@ -27,9 +27,6 @@ export class LedgerService {
     truckHiringNotes: TruckHiringNote[],
     filters?: LedgerFilters
   ): ClientLedgerData {
-    console.log('=== Enhanced Client Ledger Generation ===');
-    console.log('Customer ID:', customerId, 'Name:', customer.name);
-
     const startDate = filters?.startDate ? new Date(filters.startDate) : null;
     const endDate = filters?.endDate ? new Date(filters.endDate) : null;
 
@@ -40,8 +37,6 @@ export class LedgerService {
       return ((p as any).customer?._id === customerId);
     });
     const customerTHNs = truckHiringNotes.filter(thn => thn.agencyName === customer.name);
-
-    console.log(`Customer has ${customerInvoices.length} invoices, ${customerPayments.length} payments, ${customerTHNs.length} THNs`);
 
     // Calculate opening balance from transactions before start date
     const openingBalance = this.calculateOpeningBalance(customerId, customerInvoices, customerPayments, startDate, customerTHNs);
@@ -114,7 +109,7 @@ export class LedgerService {
             balance: 0, // Will be calculated later
             balanceType: isMoneyIn ? 'CR' : 'DR',
             reference: payment.invoiceId ? `INV-${typeof payment.invoiceId === 'string' ? payment.invoiceId : (payment.invoiceId as Invoice).invoiceNumber}` :
-                      payment.truckHiringNoteId ? `THN-${typeof payment.truckHiringNoteId === 'string' ? payment.truckHiringNoteId : (payment.truckHiringNoteId as TruckHiringNote).thnNumber}` : undefined,
+              payment.truckHiringNoteId ? `THN-${typeof payment.truckHiringNoteId === 'string' ? payment.truckHiringNoteId : (payment.truckHiringNoteId as TruckHiringNote).thnNumber}` : undefined,
             paymentMode: payment.mode,
             notes: payment.notes || undefined
           });
@@ -151,10 +146,6 @@ export class LedgerService {
       closingBalanceType,
       transactionCount: processedEntries.length
     };
-
-    console.log(`Opening Balance: ${openingBalance.amount} ${openingBalance.type}`);
-    console.log(`Period Debits: ${totalDebits}, Credits: ${totalCredits}`);
-    console.log(`Closing Balance: ${closingBalanceAmount} ${closingBalanceType}`);
 
     return {
       customerId,
@@ -303,7 +294,7 @@ export class LedgerService {
         });
 
         if (payment.tdsAmount && payment.tdsAmount > 0) {
-           entries.push({
+          entries.push({
             date: payment.tdsDate || payment.date,
             particulars: `TDS Deducted for ${payment.referenceNo || 'Payment'}`,
             debit: 0,
@@ -333,14 +324,14 @@ export class LedgerService {
 
     // Calculate summary
     const totalRevenue = invoices.reduce((sum, inv) => {
-        const d = new Date(inv.date);
-        if (d >= new Date(startDate) && d <= new Date(endDate)) return sum + inv.grandTotal;
-        return sum;
+      const d = new Date(inv.date);
+      if (d >= new Date(startDate) && d <= new Date(endDate)) return sum + inv.grandTotal;
+      return sum;
     }, 0);
     const totalExpenses = truckHiringNotes.reduce((sum, thn) => {
-        const d = new Date(thn.date);
-        if (d >= new Date(startDate) && d <= new Date(endDate)) return sum + (thn.freightRate + (thn.additionalCharges || 0));
-        return sum;
+      const d = new Date(thn.date);
+      if (d >= new Date(startDate) && d <= new Date(endDate)) return sum + (thn.freightRate + (thn.additionalCharges || 0));
+      return sum;
     }, 0);
     const netProfit = totalRevenue - totalExpenses;
 
@@ -384,31 +375,31 @@ export class LedgerService {
    * Get descriptive text for payment particulars
    */
   private static getPaymentParticulars(
-    payment: Payment, 
-    customerInvoices: Invoice[], 
+    payment: Payment,
+    customerInvoices: Invoice[],
     customerTHNs: TruckHiringNote[]
   ): string {
     const customerName = payment.customer?.name || 'Unknown Customer';
     const paymentMode = payment.mode;
-    
+
     if (payment.type === PaymentType.ADVANCE) {
       return `Advance received from ${customerName} (Ref: ${payment.referenceNo || 'ADVANCE'}) - Mode: ${paymentMode}`;
     }
-    
+
     if (payment.invoiceId) {
-      const invoiceNumber = typeof payment.invoiceId === 'string' 
-        ? payment.invoiceId 
+      const invoiceNumber = typeof payment.invoiceId === 'string'
+        ? payment.invoiceId
         : (payment.invoiceId as Invoice).invoiceNumber;
       return `Payment for Invoice INV-${invoiceNumber} - ${customerName} (Mode: ${paymentMode})`;
     }
-    
+
     if (payment.truckHiringNoteId) {
-      const thnNumber = typeof payment.truckHiringNoteId === 'string' 
-        ? payment.truckHiringNoteId 
+      const thnNumber = typeof payment.truckHiringNoteId === 'string'
+        ? payment.truckHiringNoteId
         : (payment.truckHiringNoteId as TruckHiringNote).thnNumber;
       return `Payment for THN-${thnNumber} - ${customerName} (Mode: ${paymentMode})`;
     }
-    
+
     return `Payment received from ${customerName} (Mode: ${paymentMode})`;
   }
 

@@ -48,6 +48,7 @@ export function numberToWords(num: number): string {
 export const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return `INVALID_DATE: ${dateString}`;
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
@@ -69,25 +70,25 @@ export const getCurrentDate = () => {
  */
 export const formatVehicleNumber = (value: string): string => {
     if (!value) return '';
-    
+
     // Remove all spaces, hyphens, and convert to uppercase
     const cleaned = value.replace(/[\s-]/g, '').toUpperCase();
-    
+
     // If it's too short or too long, return as is
     if (cleaned.length < 4 || cleaned.length > 12) {
         return cleaned;
     }
-    
+
     // Try to format as Indian vehicle number if it looks like one
     // Pattern: 2 letters + 2 digits + 1-2 letters + 4 digits
     const indianPattern = /^([A-Z]{2})(\d{2})([A-Z]{1,2})(\d{4})$/;
     const match = cleaned.match(indianPattern);
-    
+
     if (match) {
         const [, state, district, series, number] = match;
         return `${state}-${district}-${series}-${number}`;
     }
-    
+
     // If it doesn't match Indian pattern, try to format as: XX-XX-XXXX
     if (cleaned.length >= 6) {
         const firstPart = cleaned.substring(0, 2);
@@ -95,7 +96,7 @@ export const formatVehicleNumber = (value: string): string => {
         const thirdPart = cleaned.substring(4);
         return `${firstPart}-${secondPart}-${thirdPart}`;
     }
-    
+
     // If it's too short, return as is
     return cleaned;
 };
@@ -109,7 +110,6 @@ const getGstApiKey = async (): Promise<string> => {
         const apiKeyData = await getApiKeyValue('gstin', '');
         return apiKeyData.keyValue;
     } catch (error) {
-        console.log('Could not fetch API key from database, using environment fallback');
         // Fallback to environment variable
         const envKey = import.meta.env.VITE_GSTIN_API_KEY;
         if (!envKey || envKey.length < 32 || envKey.includes('$VITE_GSTIN_API_KEY')) {
@@ -121,7 +121,6 @@ const getGstApiKey = async (): Promise<string> => {
 
 // Mock function for testing when API is not available
 const getMockCustomerDetails = (gstin: string): Omit<Customer, 'id'> => {
-    console.log('Using mock data for GSTIN:', gstin);
     return {
         name: 'Sample Business Name',
         tradeName: 'Sample Trade Name',
@@ -132,7 +131,7 @@ const getMockCustomerDetails = (gstin: string): Omit<Customer, 'id'> => {
         contactPhone: '',
         contactEmail: '',
     };
-}; 
+};
 
 
 /**
@@ -151,7 +150,7 @@ export const getOriginLocationText = (lorryReceipts: LorryReceipt[]): string => 
         .map(lr => lr.from?.trim())
         .filter(Boolean)
         .map(origin => origin.toLowerCase());
-    
+
     // Get unique origins while preserving original case from first occurrence
     const uniqueOrigins = [...new Set(normalizedOrigins)]
         .map(normalizedOrigin => {
@@ -159,15 +158,15 @@ export const getOriginLocationText = (lorryReceipts: LorryReceipt[]): string => 
             const originalOrigin = lorryReceipts.find(lr => lr.from?.trim().toLowerCase() === normalizedOrigin)?.from?.trim();
             return originalOrigin || normalizedOrigin;
         });
-    
+
     if (uniqueOrigins.length === 0) {
         return 'Freight charges due to us on following consignments carried from various locations.';
     }
-    
+
     if (uniqueOrigins.length === 1) {
         return `Freight charges due to us on following consignments carried from ${uniqueOrigins[0]}.`;
     }
-    
+
     // Multiple origins - join them with commas
     const originsText = uniqueOrigins.join(', ');
     return `Freight charges due to us on following consignments carried from ${originsText}.`;

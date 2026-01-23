@@ -11,6 +11,7 @@ export interface ITruckHiringNote extends Document {
   unloadingLocation: string;
   loadingDateTime: string;
   expectedDeliveryDate: string;
+  podDate?: string;
   agencyName: string;
   brokerContact?: string;
   freightRate: number;
@@ -40,6 +41,7 @@ const TruckHiringNoteSchema = new Schema({
   unloadingLocation: { type: String },
   loadingDateTime: { type: String },
   expectedDeliveryDate: { type: String },
+  podDate: { type: String },
   agencyName: { type: String, required: true },
   brokerContact: { type: String },
   freightRate: { type: Number, required: true },

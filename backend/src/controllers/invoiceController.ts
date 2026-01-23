@@ -116,6 +116,12 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
       console.error('Validation error details:', JSON.stringify(validationError, null, 2));
       throw validationError;
     }
+
+    // Explicitly preserve bookingCharges since Zod validation strips it
+    if (transformedData.bookingCharges !== undefined) {
+      invoiceData.bookingCharges = transformedData.bookingCharges;
+      console.log('Preserved bookingCharges:', invoiceData.bookingCharges);
+    }
     
     // Calculate total charges from selected LRs
     const { totalCharges, hasZeroFreight } = await calculateTotalChargesFromLrs(invoiceData.lorryReceipts);
@@ -133,7 +139,8 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
     console.log('Manual freight amount:', manualFreightAmount);
     console.log('Using manual freight:', useManualFreight);
     console.log('Final taxable total:', finalTaxableTotal);
-    
+    console.log('Booking charges in invoiceData:', invoiceData.bookingCharges);
+
     // Use custom Invoice number if provided, otherwise generate one
     let invoiceNumber = invoiceData.invoiceNumber;
     let config = await NumberingConfig.findOne({ type: 'invoice' });
@@ -188,7 +195,8 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
     };
     
     console.log('Invoice to create:', JSON.stringify(invoiceToCreate, null, 2));
-    
+    console.log('Booking charges in invoiceToCreate:', invoiceToCreate.bookingCharges);
+
     console.log('Creating new Invoice instance...');
     const invoice = new Invoice(invoiceToCreate);
     console.log('Invoice instance created');
@@ -280,11 +288,17 @@ export const updateInvoice = asyncHandler(async (req: Request, res: Response) =>
     customer: req.body.customerId || req.body.customer,
     lorryReceipts: req.body.lorryReceipts?.map((lr: any) => lr._id || lr) || req.body.lorryReceipts,
   };
-  
+
   // Remove frontend-specific fields
   delete transformedData.customerId;
-  
+
   const invoiceData = updateInvoiceSchema.parse(transformedData);
+
+  // Explicitly preserve bookingCharges since Zod validation strips it
+  if (transformedData.bookingCharges !== undefined) {
+    invoiceData.bookingCharges = transformedData.bookingCharges;
+  }
+
   const invoice = await Invoice.findById(req.params.id);
 
   if (invoice) {

@@ -135,6 +135,9 @@ export interface Invoice {
   gstType: GstType;
   cgstRate: number;
   sgstRate: number;
+  igstRate: number;
+  cgstAmount: number;
+  sgstAmount: number;
   igstAmount: number;
   grandTotal: number;
   isRcm: boolean;
@@ -202,6 +205,7 @@ export interface TruckHiringNote {
   unloadingLocation?: string;
   loadingDateTime?: string;
   expectedDeliveryDate?: string;
+  podDate?: string;
   agencyName: string;
   brokerContact?: string;
   freightRate: number;

@@ -27,7 +27,7 @@ export const createInvoiceSchema = z.object({
   // Auto-calculated freight fields
   isAutoFreightCalculated: z.boolean().optional(),
   invoiceFreightTotal: z.number().nonnegative().optional(),
-  bookingCharges: z.number().nonnegative().optional(),
+  bookingCharges: z.number().nonnegative(),
   // Separate freight charges fields
   freightCharges: z.object({
     amount: z.number().nonnegative().optional(),
@@ -35,7 +35,7 @@ export const createInvoiceSchema = z.object({
     transporterName: z.string().optional(),
     lrNumber: z.string().optional(),
   }).optional(),
-});
+}).passthrough();
 
 export const updateInvoiceSchema = createInvoiceSchema.partial();
 
@@ -133,11 +133,14 @@ export const createTruckHiringNoteSchema = z.object({
   weightUnit: z.enum(['KG', 'MT', 'Tons']).optional(),
   loadingLocation: z.string().optional(),
   unloadingLocation: z.string().optional(),
+  loadingDateTime: z.string().optional(),
+  expectedDeliveryDate: z.string().optional(),
   agencyName: z.string().min(1),
   brokerContact: z.string().optional(),
   freightRate: z.number().nonnegative(),
   advanceAmount: z.number().nonnegative().optional(),
   paymentTerms: z.string().optional(),
+  podDate: z.string().optional(),
   additionalCharges: z.number().nonnegative().optional(),
   remarks: z.string().optional(),
   linkedLR: z.string().optional(),

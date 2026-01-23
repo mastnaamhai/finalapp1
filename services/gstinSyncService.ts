@@ -50,13 +50,12 @@ const syncSingleGstin = async (gstin: string, retryCount = 0): Promise<{ success
     return { success: true };
   } catch (error: any) {
     console.error(`Error syncing GSTIN ${gstin}:`, error);
-    
+
     if (retryCount < SYNC_CONFIG.MAX_RETRIES) {
-      console.log(`Retrying sync for GSTIN ${gstin} (attempt ${retryCount + 1})`);
       await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
       return syncSingleGstin(gstin, retryCount + 1);
     }
-    
+
     return { success: false, error: error.message };
   }
 };
@@ -91,12 +90,9 @@ const syncBatch = async (gstins: string[]): Promise<SyncStats> => {
 
 // Main sync function
 export const syncAllGstinData = async (): Promise<SyncStats> => {
-  console.log('Starting GSTIN data sync...');
-  
   const customers = await getCustomersForSync();
-  
+
   if (customers.length === 0) {
-    console.log('No customers need syncing');
     return {
       total: 0,
       synced: 0,
@@ -105,8 +101,6 @@ export const syncAllGstinData = async (): Promise<SyncStats> => {
       errors: []
     };
   }
-
-  console.log(`Found ${customers.length} customers with GSTINs to sync`);
 
   const gstins = customers
     .filter(customer => customer.gstin)
@@ -123,10 +117,9 @@ export const syncAllGstinData = async (): Promise<SyncStats> => {
   // Process in batches
   for (let i = 0; i < gstins.length; i += SYNC_CONFIG.BATCH_SIZE) {
     const batch = gstins.slice(i, i + SYNC_CONFIG.BATCH_SIZE);
-    console.log(`Processing batch ${Math.floor(i / SYNC_CONFIG.BATCH_SIZE) + 1}/${Math.ceil(gstins.length / SYNC_CONFIG.BATCH_SIZE)}`);
-    
+
     const batchStats = await syncBatch(batch);
-    
+
     totalStats.synced += batchStats.synced;
     totalStats.failed += batchStats.failed;
     totalStats.errors.push(...batchStats.errors);
@@ -137,7 +130,6 @@ export const syncAllGstinData = async (): Promise<SyncStats> => {
     }
   }
 
-  console.log('GSTIN sync completed:', totalStats);
   return totalStats;
 };
 
@@ -150,9 +142,7 @@ export const startPeriodicSync = (intervalHours = 24) => {
   }
 
   const intervalMs = intervalHours * 60 * 60 * 1000;
-  
-  console.log(`Starting periodic GSTIN sync every ${intervalHours} hours`);
-  
+
   syncInterval = setInterval(async () => {
     try {
       await syncAllGstinData();
@@ -175,12 +165,10 @@ export const stopPeriodicSync = () => {
   if (syncInterval) {
     clearInterval(syncInterval);
     syncInterval = null;
-    console.log('Periodic GSTIN sync stopped');
   }
 };
 
 // Manual sync trigger
 export const triggerManualSync = async (): Promise<SyncStats> => {
-  console.log('Manual GSTIN sync triggered');
   return await syncAllGstinData();
 };
