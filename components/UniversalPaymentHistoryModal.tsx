@@ -12,16 +12,16 @@ interface UniversalPaymentHistoryModalProps {
     onClose: () => void;
 }
 
-export const UniversalPaymentHistoryModal: React.FC<UniversalPaymentHistoryModalProps> = ({ 
-    invoice, 
-    truckHiringNote, 
-    payments, 
-    onClose 
+export const UniversalPaymentHistoryModal: React.FC<UniversalPaymentHistoryModalProps> = ({
+    invoice,
+    truckHiringNote,
+    payments,
+    onClose
 }) => {
     const document = invoice || truckHiringNote;
     const documentType = invoice ? 'Invoice' : 'Truck Hiring Note';
     const documentNumber = invoice ? `#${invoice.invoiceNumber}` : `#${truckHiringNote?.thnNumber}`;
-    
+
     // Filter payments for this document
     const relevantPayments = payments.filter(p => {
         if (invoice) {
@@ -37,19 +37,19 @@ export const UniversalPaymentHistoryModal: React.FC<UniversalPaymentHistoryModal
     const sortedPayments = relevantPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     // Calculate totals
-    const totalPaid = sortedPayments.reduce((sum, payment) => sum + payment.amount, 0);
+    const totalPaid = sortedPayments.reduce((sum, payment) => sum + payment.amount + (payment.tdsAmount || 0), 0);
     const grandTotal = document?.grandTotal || (truckHiringNote ? truckHiringNote.freightRate + (truckHiringNote.additionalCharges || 0) : 0);
-    
+
     // For THNs, also consider advance amount if it's not already included in payments
     let totalPaidAmount = totalPaid;
     if (truckHiringNote && truckHiringNote.advanceAmount > 0) {
-      const hasAdvancePayment = sortedPayments.some(p => p.type === 'Advance');
-      if (!hasAdvancePayment) {
-        // If advance amount exists but no advance payment record found, include it in total
-        totalPaidAmount += truckHiringNote.advanceAmount;
-      }
+        const hasAdvancePayment = sortedPayments.some(p => p.type === 'Advance');
+        if (!hasAdvancePayment) {
+            // If advance amount exists but no advance payment record found, include it in total
+            totalPaidAmount += truckHiringNote.advanceAmount;
+        }
     }
-    
+
     const balanceDue = grandTotal - totalPaidAmount;
 
     return (
@@ -74,13 +74,12 @@ export const UniversalPaymentHistoryModal: React.FC<UniversalPaymentHistoryModal
 
                     {/* Payment Status */}
                     <div className="mb-6">
-                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                            balanceDue <= 0 
-                                ? 'bg-green-100 text-green-800' 
-                                : totalPaidAmount > 0 
-                                    ? 'bg-yellow-100 text-yellow-800' 
+                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${balanceDue <= 0
+                                ? 'bg-green-100 text-green-800'
+                                : totalPaidAmount > 0
+                                    ? 'bg-yellow-100 text-yellow-800'
                                     : 'bg-red-100 text-red-800'
-                        }`}>
+                            }`}>
                             {balanceDue <= 0 ? 'Fully Paid' : totalPaidAmount > 0 ? 'Partially Paid' : 'Unpaid'}
                         </div>
                     </div>
@@ -148,7 +147,7 @@ export const UniversalPaymentHistoryModal: React.FC<UniversalPaymentHistoryModal
                                         {sortedPayments.map((payment, index) => {
                                             const grossAmount = payment.amount + (payment.tdsAmount || 0);
                                             const hasTDS = payment.tdsApplicable && payment.tdsAmount && payment.tdsAmount > 0;
-                                            
+
                                             return (
                                                 <tr key={payment._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -184,21 +183,19 @@ export const UniversalPaymentHistoryModal: React.FC<UniversalPaymentHistoryModal
                                                         )}
                                                     </td>
                                                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                                                            payment.type === 'Advance' ? 'bg-blue-100 text-blue-800' :
-                                                             payment.type === 'Payment' ? 'bg-green-100 text-green-800' :
-                                                            'bg-purple-100 text-purple-800'
-                                                        }`}>
+                                                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${payment.type === 'Advance' ? 'bg-blue-100 text-blue-800' :
+                                                                payment.type === 'Payment' ? 'bg-green-100 text-green-800' :
+                                                                    'bg-purple-100 text-purple-800'
+                                                            }`}>
                                                             {payment.type}
                                                         </span>
                                                     </td>
                                                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                                                            payment.mode === 'Cash' ? 'bg-gray-100 text-gray-800' :
-                                                            payment.mode === 'UPI' ? 'bg-purple-100 text-purple-800' :
-                                                            payment.mode === 'NEFT' || payment.mode === 'RTGS' ? 'bg-blue-100 text-blue-800' :
-                                                            'bg-yellow-100 text-yellow-800'
-                                                        }`}>
+                                                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${payment.mode === 'Cash' ? 'bg-gray-100 text-gray-800' :
+                                                                payment.mode === 'UPI' ? 'bg-purple-100 text-purple-800' :
+                                                                    payment.mode === 'NEFT' || payment.mode === 'RTGS' ? 'bg-blue-100 text-blue-800' :
+                                                                        'bg-yellow-100 text-yellow-800'
+                                                            }`}>
                                                             {payment.mode}
                                                         </span>
                                                     </td>

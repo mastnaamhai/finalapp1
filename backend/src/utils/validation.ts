@@ -90,7 +90,7 @@ export const createPaymentSchema = z.object({
   invoiceId: z.string().optional(),
   truckHiringNoteId: z.string().optional(),
   customer: z.string().optional(),
-  amount: z.number().positive(),
+  amount: z.number().nonnegative(),
   date: z.string().min(1),
   type: z.nativeEnum(PaymentType),
   mode: z.nativeEnum(PaymentMode),
@@ -121,6 +121,14 @@ export const createPaymentSchema = z.object({
   return true;
 }, {
   message: 'TDS rate is required when TDS is applicable',
+}).refine(data => {
+  // Ensure we are either paying something or recording TDS
+  if (data.amount === 0 && (!data.tdsAmount || data.tdsAmount === 0)) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Payment amount must be greater than 0, or a TDS amount must be specified',
 });
 
 export const updatePaymentSchema = createPaymentSchema.partial();

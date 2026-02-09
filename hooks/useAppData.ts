@@ -22,8 +22,9 @@ export const useAppData = () => {
         fetchedTruckHiringNotes,
       ] = await Promise.all([
         getLorryReceipts(),
-        getInvoices(),
+        getInvoices({ limit: 10000 }), // Fetch all invoices to ensure reports are accurate
         getPayments(),
+
         getTruckHiringNotes(),
       ]);
 

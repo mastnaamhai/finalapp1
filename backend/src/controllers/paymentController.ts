@@ -14,7 +14,7 @@ export const updateThnStatus = async (thnId: string) => {
     if (thn) {
       const totalPaid = await Payment.aggregate([
         { $match: { truckHiringNoteId: new mongoose.Types.ObjectId(thnId) } },
-        { $group: { _id: null, total: { $sum: '$amount' } } }
+        { $group: { _id: null, total: { $sum: { $add: ['$amount', { $ifNull: ['$tdsAmount', 0] }] } } } }
       ]);
 
       const paidAmount = totalPaid.length > 0 ? totalPaid[0].total : 0;
@@ -108,8 +108,8 @@ export const createPayment = asyncHandler(async (req: Request, res: Response) =>
       // For Option 3a: payment.amount should be NET amount (gross - TDS)
       // If frontend sent gross amount, calculate net; otherwise use amount as-is (assuming it's already net)
       // Note: Frontend should send net amount, but we'll handle both cases
-      // For now, assuming amount is gross if tdsAmount was not provided
-      if (paymentData.tdsAmount === undefined) {
+      // If amount is 0, it means it's a TDS-only entry, so we don't deduct anything.
+      if (paymentData.amount > 0 && paymentData.tdsAmount === undefined) {
         finalAmount = paymentData.amount - tdsAmount;
       } else {
         // Frontend already calculated net, so amount is already net

@@ -14,41 +14,42 @@ export enum GstPayableBy {
 }
 
 export enum GstType {
-    CGST_SGST = 'CGST/SGST',
-    IGST = 'IGST',
+  CGST_SGST = 'CGST/SGST',
+  IGST = 'IGST',
 }
 
 export enum InvoiceStatus {
-    UNPAID = 'Unpaid',
-    PARTIALLY_PAID = 'Partially Paid',
-    PAID = 'Paid',
+  UNPAID = 'Unpaid',
+  PARTIALLY_PAID = 'Partially Paid',
+  PAID = 'Paid',
 }
 
 export enum THNStatus {
-    UNPAID = 'Unpaid',
-    PARTIALLY_PAID = 'Partially Paid',
-    PAID = 'Paid',
+  UNPAID = 'Unpaid',
+  PARTIALLY_PAID = 'Partially Paid',
+  PAID = 'Paid',
 }
 
 export enum PaymentType {
-    ADVANCE = 'Advance',
-    PAYMENT = 'Payment',
+  ADVANCE = 'Advance',
+  PAYMENT = 'Payment',
+  TDS = 'TDS',
 }
 
 export enum PaymentMode {
-    CASH = 'Cash',
-    CHEQUE = 'Cheque',
-    NEFT = 'NEFT',
-    RTGS = 'RTGS',
-    UPI = 'UPI',
+  CASH = 'Cash',
+  CHEQUE = 'Cheque',
+  NEFT = 'NEFT',
+  RTGS = 'RTGS',
+  UPI = 'UPI',
 }
 
 export enum RiskBearer {
-    CARRIER = "AT CARRIER'S RISK",
-    OWNER = "AT OWNER'S RISK",
-    // Legacy values for backward compatibility
-    LEGACY_CARRIER = "Carrier",
-    LEGACY_OWNER = "Owner",
+  CARRIER = "AT CARRIER'S RISK",
+  OWNER = "AT OWNER'S RISK",
+  // Legacy values for backward compatibility
+  LEGACY_CARRIER = "Carrier",
+  LEGACY_OWNER = "Owner",
 }
 
 export interface Customer {
@@ -65,6 +66,12 @@ export interface Customer {
   pin?: string;
   phone?: string;
   email?: string;
+  // Ledger tracking fields
+  creditBalance?: number;
+  totalOutstanding?: number;
+  advancePayments?: number;
+  creditLimit?: number;
+  lastPaymentDate?: string;
 }
 
 
@@ -104,12 +111,12 @@ export interface LorryReceipt {
   riskBearer: RiskBearer;
   status: LorryReceiptStatus;
   insurance: {
-      hasInsured: boolean;
-      company?: string;
-      policyNo?: string;
-      date?: string;
-      amount?: number;
-      risk?: string;
+    hasInsured: boolean;
+    company?: string;
+    policyNo?: string;
+    date?: string;
+    amount?: number;
+    risk?: string;
   },
   invoiceNo: string;
   sealNo: string;
@@ -153,46 +160,53 @@ export interface Invoice {
 }
 
 export interface CompanyInfo {
-    name: string;
-    address: string;
-    state: string;
-    phone1: string;
-    phone2: string;
-    email: string;
-    website: string;
-    gstin: string;
-    pan: string;
-    bankName: string;
-    accountNumber: string;
-    ifsc: string;
+  name: string;
+  address: string;
+  state: string;
+  phone1: string;
+  phone2: string;
+  email: string;
+  website: string;
+  gstin: string;
+  pan: string;
+  bankName: string;
+  accountNumber: string;
+  ifsc: string;
 }
 
 export interface Payment {
-    _id: string;
-    invoiceId?: string;
-    invoice?: Invoice;
-    truckHiringNoteId?: string;
-    truckHiringNote?: TruckHiringNote;
-    customerId?: string;
-    customer?: Customer;
-    date: string;
+  _id: string;
+  invoiceId?: string;
+  invoice?: Invoice;
+  truckHiringNoteId?: string;
+  truckHiringNote?: TruckHiringNote;
+  customerId?: string;
+  customer?: Customer;
+  date: string;
+  amount: number;
+  type: PaymentType;
+  mode: PaymentMode;
+  referenceNo?: string;
+  notes?: string;
+  // TDS fields
+  tdsApplicable?: boolean;
+  tdsRate?: number;
+  tdsAmount?: number;
+  tdsDate?: string;
+  // Settlement tracking
+  settlements?: {
+    invoiceId: string;
     amount: number;
-    type: PaymentType;
-    mode: PaymentMode;
-    referenceNo?: string;
-    notes?: string;
-    // TDS fields
-    tdsApplicable?: boolean;
-    tdsRate?: number;
-    tdsAmount?: number;
-    tdsDate?: string;
-    // Settlement tracking
-    settlements?: {
-      invoiceId: string;
-      amount: number;
-      date: string;
-    }[];
-    unsettledAmount?: number;
+    date: string;
+    allocatedBy?: string;
+  }[];
+  unsettledAmount?: number;
+  // Payment allocation tracking
+  allocationType?: 'invoice-specific' | 'advance' | 'multi-invoice';
+  isAdvancePayment?: boolean;
+  allocatedAmount?: number;
+  unallocatedAmount?: number;
+  status?: 'unallocated' | 'partially-allocated' | 'fully-allocated';
 }
 
 export interface TruckHiringNote {

@@ -100,39 +100,45 @@ InvoiceSchema.index({ customer: 1, date: -1 });
 InvoiceSchema.index({ status: 1, date: -1 });
 // Note: invoiceNumber index is automatically created by unique: true in schema
 
-// Virtual for total paid amount
-InvoiceSchema.virtual('paidAmount').get(function(this: IInvoice) {
+// Virtual for total paid amount (includes both regular payments and TDS amounts)
+InvoiceSchema.virtual('paidAmount').get(function (this: IInvoice) {
   // Ensure payments are populated and it's an array of documents, not just ObjectIDs
   if (this.payments && this.payments.length > 0 && (this.payments[0] as IPayment).amount !== undefined) {
-    return this.payments.reduce((total, payment) => total + (payment as IPayment).amount, 0);
+    return this.payments.reduce((total, payment) => {
+      const paymentDoc = payment as IPayment;
+      return total + paymentDoc.amount + (paymentDoc.tdsAmount || 0);
+    }, 0);
   }
   return 0;
 });
 
-// Virtual for balance due
-InvoiceSchema.virtual('balanceDue').get(function(this: IInvoice) {
+// Virtual for balance due (includes both regular payments and TDS amounts)
+InvoiceSchema.virtual('balanceDue').get(function (this: IInvoice) {
   let paidAmount = 0;
   // Ensure payments are populated and it's an array of documents, not just ObjectIDs
   if (this.payments && this.payments.length > 0 && (this.payments[0] as IPayment).amount !== undefined) {
-    paidAmount = this.payments.reduce((total, payment) => total + (payment as IPayment).amount, 0);
+    paidAmount = this.payments.reduce((total, payment) => {
+      const paymentDoc = payment as IPayment;
+      return total + paymentDoc.amount + (paymentDoc.tdsAmount || 0);
+    }, 0);
   }
   return this.grandTotal - paidAmount;
 });
 
 // Virtual for customerId to maintain frontend compatibility
-InvoiceSchema.virtual('customerId').get(function(this: IInvoice) {
+InvoiceSchema.virtual('customerId').get(function (this: IInvoice) {
   return this.customer._id || this.customer;
 });
 
 // Pre-save middleware to calculate GST amounts
-InvoiceSchema.pre('save', function(next) {
+InvoiceSchema.pre('save', function (next) {
   // Only calculate GST if not RCM and not manual GST entry
   if (!this.isRcm && !this.isManualGst) {
     const totalAmount = this.totalAmount || 0;
     let cgstAmount = 0;
     let sgstAmount = 0;
     let igstAmount = 0;
-    
+
     if (this.gstType === GstType.CGST_SGST) {
       const gstRate = (this.cgstRate || 0) + (this.sgstRate || 0);
       const gstAmount = (totalAmount * gstRate) / 100;
@@ -142,7 +148,7 @@ InvoiceSchema.pre('save', function(next) {
       const gstRate = this.igstRate || 0;
       igstAmount = (totalAmount * gstRate) / 100;
     }
-    
+
     this.cgstAmount = cgstAmount;
     this.sgstAmount = sgstAmount;
     this.igstAmount = igstAmount;
@@ -155,7 +161,7 @@ InvoiceSchema.pre('save', function(next) {
     this.grandTotal = this.totalAmount || 0;
   }
   // For manual GST, use the provided amounts as-is
-  
+
   next();
 });
 

@@ -119,6 +119,15 @@ const getGstApiKey = async (): Promise<string> => {
     }
 };
 
+export const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+};
+
 // Mock function for testing when API is not available
 const getMockCustomerDetails = (gstin: string): Omit<Customer, 'id'> => {
     return {

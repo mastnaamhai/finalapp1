@@ -2,9 +2,17 @@ import { API_BASE_URL } from '../constants';
 import type { Invoice } from '../types';
 
 
-export const getInvoices = async (): Promise<Invoice[]> => {
-    // Fetch all invoices by setting a high limit
-    const response = await fetch(`${API_BASE_URL}/invoices?limit=1000`);
+export const getInvoices = async (params?: { page?: number; limit?: number }): Promise<Invoice[]> => {
+    // Build query string
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+    // Default to high limit if not specified to fetch all by default for now, 
+    // or respect the passed limit.
+    if (!params?.limit) queryParams.append('limit', '1000');
+
+    const response = await fetch(`${API_BASE_URL}/invoices?${queryParams.toString()}`);
     if (!response.ok) {
         throw new Error('Failed to fetch invoices');
     }
@@ -25,9 +33,9 @@ export const createInvoice = async (invoice: Omit<Invoice, 'id' | '_id'>): Promi
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
         const details = (errorData?.errors?.fieldErrors) ?
-          Object.entries(errorData.errors.fieldErrors)
-            .map(([k, v]) => `${k}: ${(v as string[]).join(', ')}`)
-            .join(' | ') : undefined;
+            Object.entries(errorData.errors.fieldErrors)
+                .map(([k, v]) => `${k}: ${(v as string[]).join(', ')}`)
+                .join(' | ') : undefined;
         const composed = [errorData?.message, details].filter(Boolean).join(' - ');
         const err = new Error(composed || 'Failed to create invoice');
         (err as any).fieldErrors = errorData?.errors?.fieldErrors;

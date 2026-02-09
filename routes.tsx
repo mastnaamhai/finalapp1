@@ -18,6 +18,7 @@ import { ClientsWrapper } from './components/route-wrappers/ClientsWrapper';
 import { TruckHiringNotesWrapper } from './components/route-wrappers/TruckHiringNotesWrapper';
 import { THNPdfWrapper } from './components/route-wrappers/THNPdfWrapper';
 import { SettingsWrapper } from './components/route-wrappers/SettingsWrapper';
+import { ReportsWrapper } from './components/route-wrappers/ReportsWrapper';
 
 // Create the router configuration
 export const router = createBrowserRouter([
@@ -112,6 +113,10 @@ export const router = createBrowserRouter([
       {
         path: 'settings',
         element: <SettingsWrapper />
+      },
+      {
+        path: 'reports',
+        element: <ReportsWrapper />
       }
     ]
   }

@@ -416,3 +416,10 @@ export interface CompanyInfo {
   createdAt?: string;
   updatedAt?: string;
 }
+
+// View State Type
+export interface View {
+  name: string;
+  id?: string;
+  [key: string]: any;
+}

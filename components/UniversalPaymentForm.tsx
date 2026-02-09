@@ -11,7 +11,7 @@ import { ValidatedSelect } from './ui/ValidatedSelect';
 import { ValidatedTextarea } from './ui/ValidatedTextarea';
 import { FormSection } from './ui/ResponsiveForm';
 import { useFormValidation } from '../hooks/useFormValidation';
-import { fieldRules, commonRules } from '../services/formValidation';
+import { fieldRules } from '../services/formValidation';
 import { getCurrentDate } from '../services/utils';
 
 interface UniversalPaymentFormProps {
@@ -23,17 +23,19 @@ interface UniversalPaymentFormProps {
     onSave: (payment: Omit<Payment, '_id' | 'customer' | 'invoice' | 'truckHiringNote'>) => Promise<void>;
     onClose: () => void;
     title?: string;
+    isTdsOnly?: boolean; // Keep prop for now to avoid breaking other possible callers I missed, but default to false
 }
 
-export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({ 
-    invoiceId, 
+export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
+    invoiceId,
     truckHiringNoteId,
-    customerId, 
-    grandTotal, 
-    balanceDue, 
-    onSave, 
+    customerId,
+    grandTotal,
+    balanceDue,
+    onSave,
     onClose,
-    title
+    title,
+    isTdsOnly = false
 }) => {
     console.log('UniversalPaymentForm received customerId:', customerId);
     const totalPaid = grandTotal - balanceDue;
@@ -54,27 +56,29 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
         // TDS fields
         tdsApplicable: false,
         tdsRate: 0,
-        tdsAmount: 0,
+        tdsAmount: 0, // FIXED: Default to 0 instead of balanceDue
         tdsDate: getCurrentDate(),
     });
-    
+
     console.log('Initial payment state:', JSON.stringify(payment, null, 2));
-    
+
     const [isSaving, setIsSaving] = useState(false);
 
     // Calculate TDS and net amount
     const grossAmount = payment.amount || 0;
     const tdsRate = payment.tdsApplicable ? (payment.tdsRate || 0) : 0;
-    const calculatedTdsAmount = payment.tdsApplicable ? (grossAmount * (tdsRate / 100)) : 0;
-    const netAmount = grossAmount - calculatedTdsAmount;
+    // For TDS Only, the "TDS Amount" is directly entered, otherwise it's calculated or manually entered
+    const calculatedTdsAmount = (payment.tdsApplicable ? (grossAmount * (tdsRate / 100)) : 0);
+    // Net amount is gross minus TDS
+    const netAmount = (grossAmount - calculatedTdsAmount);
 
     // Validation rules
     const validationRules = {
-        amount: { 
-            required: true, 
-            min: 0.01, 
+        amount: {
+            required: true,
+            min: 0.01,
             max: Math.abs(balanceDue),
-            message: `Amount must be between ₹0.01 and ₹${Math.abs(balanceDue).toLocaleString('en-IN')}` 
+            message: `Amount must be between ₹0.01 and ₹${Math.abs(balanceDue).toLocaleString('en-IN')}`
         },
         date: fieldRules.date,
         type: { required: true, message: 'Payment type is required' },
@@ -90,7 +94,7 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
         notes: fieldRules.notes,
         tdsRate: {
             custom: (value: number) => {
-                if (payment.tdsApplicable && payment.type === PaymentType.ADVANCE) {
+                if (!isTdsOnly && payment.tdsApplicable && payment.type === PaymentType.ADVANCE) {
                     if (!value || value <= 0 || value > 100) {
                         return 'TDS rate must be between 0.01% and 100%';
                     }
@@ -103,10 +107,7 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
     // Form validation hook
     const {
         errors,
-        isValid,
         validateForm: validateEntireForm,
-        setFieldError,
-        clearFieldError,
         setErrors
     } = useFormValidation({
         validationRules,
@@ -117,9 +118,6 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
-        
-        // Clear error for this field
-        clearFieldError(name);
 
         setPayment(prev => ({
             ...prev,
@@ -144,9 +142,9 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         const formErrors = validateEntireForm(payment);
-        
+
         if (Object.keys(formErrors).length > 0) {
             setErrors(formErrors);
             // Focus on first error field
@@ -158,7 +156,6 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
 
         setIsSaving(true);
         try {
-            // For Option 3a: Calculate net amount (gross - TDS) and prepare payment data
             const paymentToSave = {
                 ...payment,
                 amount: netAmount, // Send net amount after TDS deduction
@@ -168,10 +165,11 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
 
             // Clear TDS fields if not applicable
             if (!payment.tdsApplicable || payment.type !== PaymentType.ADVANCE) {
-                delete paymentToSave.tdsApplicable;
-                delete paymentToSave.tdsRate;
-                delete paymentToSave.tdsAmount;
-                delete paymentToSave.tdsDate;
+                const p = paymentToSave as any;
+                delete p.tdsApplicable;
+                delete p.tdsRate;
+                delete p.tdsAmount;
+                delete p.tdsDate;
             }
 
             console.log('Sending payment data:', JSON.stringify(paymentToSave, null, 2));
@@ -248,6 +246,7 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
                             </div>
                         )}
 
+
                         {/* Payment Details */}
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -259,6 +258,7 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
                                     type="date"
                                     required
                                 />
+
                                 <div>
                                     <ValidatedInput
                                         fieldName="amount"
@@ -323,10 +323,10 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
                                     required
                                     placeholder={
                                         payment.mode === PaymentMode.CHEQUE ? "Cheque number" :
-                                        payment.mode === PaymentMode.NEFT ? "NEFT reference" :
-                                        payment.mode === PaymentMode.RTGS ? "RTGS reference" :
-                                        payment.mode === PaymentMode.UPI ? "UPI transaction ID" :
-                                        "Reference number"
+                                            payment.mode === PaymentMode.NEFT ? "NEFT reference" :
+                                                payment.mode === PaymentMode.RTGS ? "RTGS reference" :
+                                                    payment.mode === PaymentMode.UPI ? "UPI transaction ID" :
+                                                        "Reference number"
                                     }
                                 />
                             )}
@@ -372,7 +372,7 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
                                                     required
                                                     label="TDS Date"
                                                 />
-                                                
+
                                                 {/* TDS Calculation Display */}
                                                 <div className="bg-gray-50 border border-gray-200 rounded-md p-4 space-y-2">
                                                     <div className="flex justify-between text-sm">
@@ -423,7 +423,7 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">Remaining Balance</label>
                                     <div className="mt-1 p-3 border border-gray-300 rounded-md bg-white font-semibold text-lg text-red-600">
-                                        ₹{(Math.abs(balanceDue) - netAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                        ₹{(Math.abs(balanceDue) - (netAmount + calculatedTdsAmount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                     </div>
                                 </div>
                             </div>
@@ -431,24 +431,24 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
 
                         {/* Action Buttons */}
                         <div className="flex justify-end space-x-2 pt-6 mt-6 border-t">
-                            <Button 
-                                type="button" 
-                                variant="secondary" 
-                                onClick={onClose} 
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={onClose}
                                 disabled={isSaving}
                             >
                                 Cancel
                             </Button>
-                            <Button 
-                                type="submit" 
+                            <Button
+                                type="submit"
                                 disabled={isSaving || payment.amount <= 0}
                             >
                                 {isSaving ? 'Recording Payment...' : 'Record Payment'}
                             </Button>
                         </div>
-                    </Card>
-                </form>
-            </div>
-        </div>
+                    </Card >
+                </form >
+            </div >
+        </div >
     );
 };

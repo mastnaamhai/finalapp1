@@ -22,8 +22,15 @@ export interface IPayment extends Document {
     invoiceId: Schema.Types.ObjectId;
     amount: number;
     date: string;
+    allocatedBy?: string;
   }[];
   unsettledAmount?: number;
+  // Payment allocation tracking
+  allocationType?: 'invoice-specific' | 'advance' | 'multi-invoice';
+  isAdvancePayment?: boolean;
+  allocatedAmount?: number;
+  unallocatedAmount?: number;
+  status?: 'unallocated' | 'partially-allocated' | 'fully-allocated';
 }
 
 const PaymentSchema = new Schema({
@@ -46,9 +53,31 @@ const PaymentSchema = new Schema({
   settlements: [{
     invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice', required: true },
     amount: { type: Number, required: true },
-    date: { type: String, required: true }
+    date: { type: String, required: true },
+    allocatedBy: { type: String } // User who made the allocation
   }],
-  unsettledAmount: { type: Number, default: 0 }
+  unsettledAmount: { type: Number, default: 0 },
+  // Payment allocation tracking
+  allocationType: {
+    type: String,
+    enum: ['invoice-specific', 'advance', 'multi-invoice'],
+    default: 'invoice-specific'
+  },
+  isAdvancePayment: { type: Boolean, default: false },
+  allocatedAmount: { type: Number, default: 0 },
+  unallocatedAmount: { type: Number, default: 0 },
+  status: {
+    type: String,
+    enum: ['unallocated', 'partially-allocated', 'fully-allocated'],
+    default: 'fully-allocated'
+  }
 });
+
+// Indexes for payment allocation queries
+PaymentSchema.index({ customer: 1, status: 1 });
+PaymentSchema.index({ status: 1 });
+PaymentSchema.index({ isAdvancePayment: 1 });
+PaymentSchema.index({ allocationType: 1 });
+PaymentSchema.index({ unallocatedAmount: 1 });
 
 export default model<IPayment>('Payment', PaymentSchema);

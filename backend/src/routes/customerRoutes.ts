@@ -8,6 +8,7 @@ import {
     updateCustomer,
     deleteCustomer
 } from '../controllers/customerController';
+import { PaymentAllocationController } from '../controllers/paymentAllocationController';
 
 const router = express.Router();
 
@@ -20,6 +21,12 @@ router.route('/gstin/:gstin')
 
 router.route('/sync-candidates')
     .get(getSyncCandidates);
+
+router.route('/:id/account-summary')
+    .get(PaymentAllocationController.getCustomerAccountSummary);
+
+router.route('/:id/unallocated-payments')
+    .get(PaymentAllocationController.getUnallocatedPayments);
 
 router.route('/:id')
     .get(getCustomerById)

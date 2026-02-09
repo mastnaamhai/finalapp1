@@ -11,7 +11,7 @@ export const updateInvoiceStatus = async (invoiceId: string) => {
     }
 
     const payments = await Payment.find({ invoiceId: invoiceId });
-    const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
+    const totalPaid = payments.reduce((sum, payment) => sum + payment.amount + (payment.tdsAmount || 0), 0);
 
     let newStatus: InvoiceStatus;
     if (totalPaid >= invoice.grandTotal) {

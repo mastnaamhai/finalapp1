@@ -8,7 +8,9 @@ import { Select } from './ui/Select';
 import { StatusBadge } from './ui/StatusBadge';
 import { formatDate } from '../services/utils';
 import { LedgerExportService } from '../services/ledgerExportService';
-import type { View } from '../App';
+import { PageContainer } from './ui/PageContainer';
+import { PageHeader } from './ui/PageHeader';
+import type { View } from '../types';
 import type { ClientLedgerData, CompanyLedgerData, LedgerFilters } from '../types/ledger';
 
 interface EnhancedLedgerProps {
@@ -44,7 +46,7 @@ export const EnhancedLedger: React.FC<EnhancedLedgerProps> = (props) => {
     if (!selectedCustomerId) return null;
     const customer = props.customers.find(c => c._id === selectedCustomerId);
     if (!customer) return null;
-    
+
     try {
       return LedgerService.generateClientLedger(
         selectedCustomerId,
@@ -121,12 +123,11 @@ export const EnhancedLedger: React.FC<EnhancedLedgerProps> = (props) => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold text-gray-800">Enhanced Ledger System</h2>
-        <Button variant="secondary" onClick={props.onBack}>Back</Button>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Enhanced Ledger System"
+        actions={<Button variant="secondary" onClick={props.onBack}>Back</Button>}
+      />
 
       {/* Filters */}
       <Card>
@@ -162,8 +163,8 @@ export const EnhancedLedger: React.FC<EnhancedLedgerProps> = (props) => {
             </Select>
           </div>
           <div className="flex items-end">
-            <Button 
-              variant="primary" 
+            <Button
+              variant="primary"
               onClick={() => setFilters({ ...filters })}
               className="w-full"
             >
@@ -440,7 +441,7 @@ export const EnhancedLedger: React.FC<EnhancedLedgerProps> = (props) => {
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Active Clients:</span>
                   <span className="font-semibold">
-                    {props.customers.filter(c => 
+                    {props.customers.filter(c =>
                       props.invoices.some(inv => inv.customer?._id === c._id)
                     ).length}
                   </span>
@@ -497,6 +498,6 @@ export const EnhancedLedger: React.FC<EnhancedLedgerProps> = (props) => {
           </div>
         </Card>
       )}
-    </div>
+    </PageContainer>
   );
 };

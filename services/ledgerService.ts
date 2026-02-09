@@ -4,9 +4,8 @@ import type {
   Payment,
   TruckHiringNote
 } from '../types';
-import { PaymentType, PaymentMode } from '../types';
+import { PaymentType } from '../types';
 import type {
-  LedgerTransaction,
   ClientLedgerEntry,
   CompanyLedgerEntry,
   ClientLedgerData,
@@ -49,17 +48,18 @@ export class LedgerService {
       const thnDate = new Date(thn.date);
       if (!startDate || thnDate >= startDate) {
         if (!endDate || thnDate <= endDate) {
+          const totalAmount = thn.freightRate + (thn.additionalCharges || 0);
           entries.push({
             date: thn.date,
             voucherNumber: `THN-${thn.thnNumber}`,
-            voucherType: 'PAYMENT' as any, // Treat as a liability record
-            particulars: `Truck Hire: THN-${thn.thnNumber} - ${thn.loadingLocation} to ${thn.unloadingLocation}`,
+            voucherType: 'FREIGHT' as any,
+            particulars: `Freight Charges Payable - ${thn.agencyName} (THN-${thn.thnNumber})`,
             debit: 0,
-            credit: thn.freightRate + (thn.additionalCharges || 0),
+            credit: totalAmount,
             balance: 0,
             balanceType: 'CR',
             reference: `THN-${thn.thnNumber}`,
-            notes: thn.remarks || undefined
+            notes: `From: ${thn.loadingLocation} to ${thn.unloadingLocation}${thn.remarks ? ` | ${thn.remarks}` : ''}`
           });
         }
       }
@@ -113,6 +113,23 @@ export class LedgerService {
             paymentMode: payment.mode,
             notes: payment.notes || undefined
           });
+
+          // NEW: Break out TDS as a separate line item for better visibility
+          if (isMoneyIn && payment.tdsAmount && payment.tdsAmount > 0) {
+            entries.push({
+              date: payment.tdsDate || payment.date,
+              voucherNumber: `TDS-${payment._id.slice(-6)}`,
+              voucherType: 'Receipt' as any,
+              particulars: this.getTDSParticulars(payment, customerInvoices),
+              debit: 0,
+              credit: payment.tdsAmount,
+              balance: 0,
+              balanceType: 'CR',
+              reference: payment.referenceNo,
+              paymentMode: 'TDS',
+              notes: `TDS @ ${payment.tdsRate || 0}%`
+            });
+          }
         }
       }
     });
@@ -157,9 +174,6 @@ export class LedgerService {
     };
   }
 
-  /**
-   * Calculate opening balance for a customer from historical transactions
-   */
   private static calculateOpeningBalance(
     customerId: string,
     allInvoices: Invoice[],
@@ -186,7 +200,10 @@ export class LedgerService {
         const isMoneyOut = !!payment.truckHiringNoteId;
         const isMoneyIn = !!payment.invoiceId || (!payment.truckHiringNoteId && (payment.type === PaymentType.ADVANCE || (payment.type as any) === 'Receipt'));
 
-        if (isMoneyIn) balance -= payment.amount;
+        if (isMoneyIn) {
+          balance -= payment.amount;
+          if (payment.tdsAmount) balance -= payment.tdsAmount;
+        }
         if (isMoneyOut) balance += payment.amount;
       }
     });
@@ -204,9 +221,6 @@ export class LedgerService {
     };
   }
 
-  /**
-   * Generate company ledger data for all transactions
-   */
   static generateCompanyLedger(
     customers: Customer[],
     invoices: Invoice[],
@@ -261,16 +275,17 @@ export class LedgerService {
     truckHiringNotes.forEach(thn => {
       const thnDate = new Date(thn.date);
       if (thnDate >= new Date(startDate) && thnDate <= new Date(endDate)) {
+        const totalAmount = thn.freightRate + (thn.additionalCharges || 0);
         entries.push({
           date: thn.date,
-          particulars: `Truck Hire: THN-${thn.thnNumber} - ${thn.agencyName} (${thn.loadingLocation} to ${thn.unloadingLocation})`,
+          particulars: `Freight Charges Payable - ${thn.agencyName} (THN-${thn.thnNumber})`,
           debit: 0,
-          credit: thn.freightRate + (thn.additionalCharges || 0),
+          credit: totalAmount,
           balance: 0,
           balanceType: 'CR',
           reference: `THN-${thn.thnNumber}`,
           customerName: thn.agencyName,
-          notes: thn.remarks || undefined
+          notes: `From: ${thn.loadingLocation} to ${thn.unloadingLocation} | Truck: ${thn.truckNumber}${thn.remarks ? ` | ${thn.remarks}` : ''}`
         });
       }
     });
@@ -296,7 +311,7 @@ export class LedgerService {
         if (payment.tdsAmount && payment.tdsAmount > 0) {
           entries.push({
             date: payment.tdsDate || payment.date,
-            particulars: `TDS Deducted for ${payment.referenceNo || 'Payment'}`,
+            particulars: this.getTDSParticulars(payment, invoices),
             debit: 0,
             credit: payment.tdsAmount,
             balance: 0,
@@ -379,28 +394,82 @@ export class LedgerService {
     customerInvoices: Invoice[],
     customerTHNs: TruckHiringNote[]
   ): string {
-    const customerName = payment.customer?.name || 'Unknown Customer';
-    const paymentMode = payment.mode;
+    const customerName = payment.customer?.name || (payment as any).agencyName || 'Broker/Client';
+    const paymentMode = payment.mode || 'N/A';
 
-    if (payment.type === PaymentType.ADVANCE) {
-      return `Advance received from ${customerName} (Ref: ${payment.referenceNo || 'ADVANCE'}) - Mode: ${paymentMode}`;
+    // Handle single invoice link (legacy or direct)
+    if (payment.invoiceId) {
+      const invoice = customerInvoices.find(inv => inv._id === payment.invoiceId);
+      if (invoice) {
+        return `Payment Received: Invoice #${invoice.invoiceNumber} - ${customerName}`;
+      }
     }
 
-    if (payment.invoiceId) {
-      const invoiceNumber = typeof payment.invoiceId === 'string'
-        ? payment.invoiceId
-        : (payment.invoiceId as Invoice).invoiceNumber;
-      return `Payment for Invoice INV-${invoiceNumber} - ${customerName} (Mode: ${paymentMode})`;
+    // Handle allocations (settlements)
+    if (payment.settlements && payment.settlements.length > 0) {
+      const invoiceNumbers = payment.settlements
+        .map(s => {
+          // settlements might have populated invoice or just ID
+          // Need to find invoice number from the invoice list passed to this function
+          const invId = typeof s.invoiceId === 'string' ? s.invoiceId : (s.invoiceId as any)._id;
+          const inv = customerInvoices.find(i => i._id === invId);
+          return inv ? `#${inv.invoiceNumber}` : '';
+        })
+        .filter(Boolean)
+        .join(', ');
+
+      if (invoiceNumbers) {
+        return `Payment Received (${payment.type === 'Advance' ? 'Allocated' : 'Bulk'}): Invoices ${invoiceNumbers} - ${customerName}`;
+      }
     }
 
     if (payment.truckHiringNoteId) {
-      const thnNumber = typeof payment.truckHiringNoteId === 'string'
-        ? payment.truckHiringNoteId
-        : (payment.truckHiringNoteId as TruckHiringNote).thnNumber;
-      return `Payment for THN-${thnNumber} - ${customerName} (Mode: ${paymentMode})`;
+      const thn = customerTHNs.find(t => t._id === payment.truckHiringNoteId);
+      if (thn) {
+        return `Freight Payment: ${customerName} (THN-${thn.thnNumber})`;
+      }
+      return `Freight Payment: ${customerName}`;
     }
 
-    return `Payment received from ${customerName} (Mode: ${paymentMode})`;
+    if (payment.type === PaymentType.ADVANCE) {
+      return `Advance Received: ${customerName} (${paymentMode})`;
+    }
+
+    return `Payment ${payment.amount >= 0 ? 'from' : 'to'} ${customerName} (${paymentMode})`;
+  }
+
+  /**
+   * Get descriptive text for TDS particulars
+   */
+  private static getTDSParticulars(payment: Payment, invoices: Invoice[]): string {
+    const ref = payment.referenceNo ? ` (Ref: ${payment.referenceNo})` : '';
+    let invoiceContext = '';
+
+    // Check for direct invoice link
+    if (payment.invoiceId) {
+      const invId = typeof payment.invoiceId === 'string' ? payment.invoiceId : (payment.invoiceId as any)._id;
+      const inv = invoices.find(i => i._id === invId);
+      if (inv) {
+        invoiceContext = ` - Invoice #${inv.invoiceNumber}`;
+      }
+    }
+    // Check for settlements
+    else if (payment.settlements && payment.settlements.length > 0) {
+      const invoiceNumbers = payment.settlements
+        .map(s => {
+          const invId = typeof s.invoiceId === 'string' ? s.invoiceId : (s.invoiceId as any)._id;
+          const inv = invoices.find(i => i._id === invId);
+          return inv ? `#${inv.invoiceNumber}` : '';
+        })
+        .filter(Boolean)
+        .join(', ');
+
+      if (invoiceNumbers) {
+        invoiceContext = ` - Invoices ${invoiceNumbers}`;
+      }
+    }
+
+    return `TDS Deducted${ref}${invoiceContext}`;
   }
 
   /**

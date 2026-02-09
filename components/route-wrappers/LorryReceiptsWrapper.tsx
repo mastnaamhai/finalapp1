@@ -7,12 +7,22 @@ export const LorryReceiptsWrapper: React.FC = () => {
   const [searchParams] = useSearchParams();
   
   // Convert search params to filters format
-  const filters = {
+  const filters: any = {
     status: searchParams.get('status') || undefined,
     customer: searchParams.get('customer') || undefined,
     dateFrom: searchParams.get('dateFrom') || undefined,
     dateTo: searchParams.get('dateTo') || undefined,
   };
+  
+  // Handle IDs filter if present in URL
+  const idsParam = searchParams.get('ids');
+  if (idsParam) {
+    try {
+      filters.ids = JSON.parse(idsParam);
+    } catch (e) {
+      console.error('Failed to parse ids parameter:', e);
+    }
+  }
   
   return (
     <LorryReceipts
