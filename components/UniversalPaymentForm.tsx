@@ -80,7 +80,7 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
             max: Math.abs(balanceDue),
             message: `Amount must be between ₹0.01 and ₹${Math.abs(balanceDue).toLocaleString('en-IN')}`
         },
-        date: fieldRules.date,
+        date: fieldRules.anyDate,
         type: { required: true, message: 'Payment type is required' },
         mode: { required: true, message: 'Payment mode is required' },
         referenceNo: {
@@ -108,7 +108,8 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
     const {
         errors,
         validateForm: validateEntireForm,
-        setErrors
+        setErrors,
+        clearFieldError
     } = useFormValidation({
         validationRules,
         validateOnChange: true,
@@ -194,7 +195,7 @@ export const UniversalPaymentForm: React.FC<UniversalPaymentFormProps> = ({
     const setQuickAmount = (amount: number) => {
         setPayment(prev => ({ ...prev, amount }));
         if (errors.amount) {
-            setErrors(prev => ({ ...prev, amount: '' }));
+            setErrors({ ...errors, amount: '' });
         }
     };
 
