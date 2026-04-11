@@ -71,8 +71,11 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
         }
       }
 
-      // Find customer name from payment.customerId
-      const customer = customers.find(c => c._id === payment.customerId);
+      // Find customer name from payment.customerId or payment.customer object
+      const customerId = (payment as any).customerId ||
+        (typeof payment.customer === 'string' ? payment.customer : (payment.customer as any)?._id);
+
+      const customer = customers.find(c => c._id === customerId);
 
       return {
         ...payment,
@@ -91,11 +94,11 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(payment =>
-        payment.customerName.toLowerCase().includes(searchLower) ||
-        payment.documentNumber.toLowerCase().includes(searchLower) ||
-        payment.documentType.toLowerCase().includes(searchLower) ||
-        payment.type.toLowerCase().includes(searchLower) ||
-        payment.mode.toLowerCase().includes(searchLower) ||
+        (payment.customerName || '').toLowerCase().includes(searchLower) ||
+        (payment.documentNumber || '').toLowerCase().includes(searchLower) ||
+        (payment.documentType || '').toLowerCase().includes(searchLower) ||
+        (payment.type || '').toLowerCase().includes(searchLower) ||
+        (payment.mode || '').toLowerCase().includes(searchLower) ||
         (payment.referenceNo || '').toLowerCase().includes(searchLower)
       );
     }

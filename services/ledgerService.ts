@@ -32,8 +32,8 @@ export class LedgerService {
     // Filter transactions for this customer
     const customerInvoices = invoices.filter(inv => inv.customer?._id === customerId);
     const customerPayments = payments.filter(p => {
-      if ((p as any).customerId === customerId) return true;
-      return ((p as any).customer?._id === customerId);
+      const pCustomerId = (p as any).customerId || (typeof p.customer === 'string' ? p.customer : p.customer?._id);
+      return pCustomerId === customerId;
     });
     const customerTHNs = truckHiringNotes.filter(thn => thn.agencyName === customer.name);
 
@@ -88,16 +88,19 @@ export class LedgerService {
 
     // Process payments in the period
     customerPayments.forEach(payment => {
+      const isMoneyOut = !!payment.truckHiringNoteId;
+      const isMoneyIn = !!payment.invoiceId ||
+        (payment.settlements && payment.settlements.length > 0) ||
+        (!payment.truckHiringNoteId && (
+          payment.type === PaymentType.ADVANCE ||
+          payment.type === PaymentType.PAYMENT ||
+          (payment.type as any) === 'Receipt'
+        ));
+
       const paymentDate = new Date(payment.date);
       if (!startDate || paymentDate >= startDate) {
         if (!endDate || paymentDate <= endDate) {
           const particulars = this.getPaymentParticulars(payment, customerInvoices, customerTHNs);
-
-          // Determine if it's a payment from client (Credit) or to broker (Debit)
-          // Money IN (Advance for Invoice) = Credit to Client
-          // Money OUT (Payment/Advance for THN) = Debit to Broker
-          const isMoneyOut = !!payment.truckHiringNoteId;
-          const isMoneyIn = !!payment.invoiceId || (!payment.truckHiringNoteId && (payment.type === PaymentType.ADVANCE || (payment.type as any) === 'Receipt'));
 
           entries.push({
             date: payment.date,
@@ -113,11 +116,17 @@ export class LedgerService {
             paymentMode: payment.mode,
             notes: payment.notes || undefined
           });
+        }
+      }
 
-          // NEW: Break out TDS as a separate line item for better visibility
-          if (isMoneyIn && payment.tdsAmount && payment.tdsAmount > 0) {
+      // Process TDS independently for correct period reporting
+      if (isMoneyIn && payment.tdsAmount && payment.tdsAmount > 0) {
+        const tdsDateVal = payment.tdsDate || payment.date;
+        const tdsDateObj = new Date(tdsDateVal);
+        if (!startDate || tdsDateObj >= startDate) {
+          if (!endDate || tdsDateObj <= endDate) {
             entries.push({
-              date: payment.tdsDate || payment.date,
+              date: tdsDateVal,
               voucherNumber: `TDS-${payment._id.slice(-6)}`,
               voucherType: 'Receipt' as any,
               particulars: this.getTDSParticulars(payment, customerInvoices),
@@ -196,15 +205,26 @@ export class LedgerService {
 
     // Handle payments before start date
     allPayments.forEach(payment => {
-      if (new Date(payment.date) < startDate) {
-        const isMoneyOut = !!payment.truckHiringNoteId;
-        const isMoneyIn = !!payment.invoiceId || (!payment.truckHiringNoteId && (payment.type === PaymentType.ADVANCE || (payment.type as any) === 'Receipt'));
+      const isMoneyOut = !!payment.truckHiringNoteId;
+      const isMoneyIn = !!payment.invoiceId ||
+        (payment.settlements && payment.settlements.length > 0) ||
+        (!payment.truckHiringNoteId && (
+          payment.type === PaymentType.ADVANCE ||
+          payment.type === PaymentType.PAYMENT ||
+          (payment.type as any) === 'Receipt'
+        ));
 
-        if (isMoneyIn) {
-          balance -= payment.amount;
-          if (payment.tdsAmount) balance -= payment.tdsAmount;
-        }
+      if (new Date(payment.date) < startDate) {
+        if (isMoneyIn) balance -= payment.amount;
         if (isMoneyOut) balance += payment.amount;
+      }
+
+      // Handle TDS independently for opening balance
+      if (isMoneyIn && payment.tdsAmount) {
+        const tdsDate = payment.tdsDate ? new Date(payment.tdsDate) : new Date(payment.date);
+        if (tdsDate < startDate) {
+          balance -= payment.tdsAmount;
+        }
       }
     });
 
@@ -244,13 +264,25 @@ export class LedgerService {
     });
 
     payments.forEach(p => {
+      const isMoneyOut = !!p.truckHiringNoteId;
+      const isMoneyIn = !!p.invoiceId ||
+        (p.settlements && p.settlements.length > 0) ||
+        (!p.truckHiringNoteId && (
+          p.type === PaymentType.ADVANCE ||
+          p.type === PaymentType.PAYMENT ||
+          (p.type as any) === 'Receipt'
+        ));
+
       if (new Date(p.date) < new Date(startDate)) {
-        const isMoneyOut = !!p.truckHiringNoteId;
-        const isMoneyIn = !!p.invoiceId || (!p.truckHiringNoteId && (p.type === PaymentType.ADVANCE || (p.type as any) === 'Receipt'));
         if (isMoneyIn) openingBalanceAmount -= p.amount;
         if (isMoneyOut) openingBalanceAmount += p.amount;
+      }
 
-        if (p.tdsAmount) openingBalanceAmount -= p.tdsAmount;
+      if (isMoneyIn && p.tdsAmount) {
+        const tdsDate = p.tdsDate ? new Date(p.tdsDate) : new Date(p.date);
+        if (tdsDate < new Date(startDate)) {
+          openingBalanceAmount -= p.tdsAmount;
+        }
       }
     });
 
@@ -291,11 +323,17 @@ export class LedgerService {
     });
 
     payments.forEach(payment => {
+      const isMoneyOut = !!payment.truckHiringNoteId;
+      const isMoneyIn = !!payment.invoiceId ||
+        (payment.settlements && payment.settlements.length > 0) ||
+        (!payment.truckHiringNoteId && (
+          payment.type === PaymentType.ADVANCE ||
+          payment.type === PaymentType.PAYMENT ||
+          (payment.type as any) === 'Receipt'
+        ));
+
       const paymentDate = new Date(payment.date);
       if (paymentDate >= new Date(startDate) && paymentDate <= new Date(endDate)) {
-        const isMoneyOut = !!payment.truckHiringNoteId;
-        const isMoneyIn = !!payment.invoiceId || (!payment.truckHiringNoteId && (payment.type === PaymentType.ADVANCE || (payment.type as any) === 'Receipt'));
-
         entries.push({
           date: payment.date,
           particulars: `${payment.type} ${isMoneyIn ? 'from' : 'to'} ${payment.customer?.name || (payment as any).agencyName || 'Broker/Client'} (Ref: ${payment.referenceNo || 'N/A'})`,
@@ -307,10 +345,14 @@ export class LedgerService {
           customerName: payment.customer?.name,
           notes: payment.notes || `Mode: ${payment.mode}`
         });
+      }
 
-        if (payment.tdsAmount && payment.tdsAmount > 0) {
+      if (isMoneyIn && payment.tdsAmount && payment.tdsAmount > 0) {
+        const tdsDateVal = payment.tdsDate || payment.date;
+        const tdsDateObj = new Date(tdsDateVal);
+        if (tdsDateObj >= new Date(startDate) && tdsDateObj <= new Date(endDate)) {
           entries.push({
-            date: payment.tdsDate || payment.date,
+            date: tdsDateVal,
             particulars: this.getTDSParticulars(payment, invoices),
             debit: 0,
             credit: payment.tdsAmount,
