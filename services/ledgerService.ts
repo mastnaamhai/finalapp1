@@ -184,7 +184,7 @@ export class LedgerService {
   }
 
   private static calculateOpeningBalance(
-    customerId: string,
+    _customerId: string,
     allInvoices: Invoice[],
     allPayments: Payment[],
     startDate: Date | null,
@@ -334,15 +334,45 @@ export class LedgerService {
 
       const paymentDate = new Date(payment.date);
       if (paymentDate >= new Date(startDate) && paymentDate <= new Date(endDate)) {
+        // Resolve customer name from customers list if needed
+        let resolvedCustomerName = payment.customer?.name || (payment as any).agencyName;
+        if (!resolvedCustomerName && payment.customer) {
+          const custId = typeof payment.customer === 'string' ? payment.customer : (payment.customer as any)._id;
+          const found = customers.find(c => c._id === custId);
+          if (found) resolvedCustomerName = found.name;
+        }
+
+        const custName = resolvedCustomerName || 'Broker/Client';
+
+        // Build particulars with invoice references if available
+        let particulars = `${payment.type} ${isMoneyIn ? 'from' : 'to'} ${custName}`;
+        if (payment.invoiceId) {
+          const invId = typeof payment.invoiceId === 'string' ? payment.invoiceId : (payment.invoiceId as any)._id;
+          const inv = invoices.find(i => i._id === invId);
+          if (inv) particulars += ` (Inv: #${inv.invoiceNumber})`;
+        } else if (payment.settlements && payment.settlements.length > 0) {
+          const invNumbers = payment.settlements
+            .map(s => {
+              const invId = typeof s.invoiceId === 'string' ? s.invoiceId : (s.invoiceId as any)._id;
+              const inv = invoices.find(i => i._id === invId);
+              return inv ? `#${inv.invoiceNumber}` : '';
+            })
+            .filter(n => n)
+            .join(', ');
+          if (invNumbers) particulars += ` (Invs: ${invNumbers})`;
+        }
+
+        if (payment.referenceNo) particulars += ` | Ref: ${payment.referenceNo}`;
+
         entries.push({
           date: payment.date,
-          particulars: `${payment.type} ${isMoneyIn ? 'from' : 'to'} ${payment.customer?.name || (payment as any).agencyName || 'Broker/Client'} (Ref: ${payment.referenceNo || 'N/A'})`,
+          particulars,
           debit: isMoneyOut ? payment.amount : 0,
           credit: isMoneyIn ? payment.amount : 0,
           balance: 0,
           balanceType: isMoneyIn ? 'CR' : 'DR',
           reference: payment.referenceNo,
-          customerName: payment.customer?.name,
+          customerName: resolvedCustomerName,
           notes: payment.notes || `Mode: ${payment.mode}`
         });
       }
