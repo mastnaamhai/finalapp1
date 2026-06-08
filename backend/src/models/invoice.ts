@@ -102,12 +102,15 @@ InvoiceSchema.index({ status: 1, date: -1 });
 
 // Virtual for total paid amount (includes both regular payments and TDS amounts)
 InvoiceSchema.virtual('paidAmount').get(function (this: IInvoice) {
-  // Ensure payments are populated and it's an array of documents, not just ObjectIDs
-  if (this.payments && this.payments.length > 0 && (this.payments[0] as IPayment).amount !== undefined) {
-    return this.payments.reduce((total, payment) => {
-      const paymentDoc = payment as IPayment;
-      return total + paymentDoc.amount + (paymentDoc.tdsAmount || 0);
-    }, 0);
+  if (this.payments && this.payments.length > 0) {
+    const firstValidPayment = this.payments.find(p => p != null) as IPayment;
+    if (firstValidPayment && firstValidPayment.amount !== undefined) {
+      return this.payments.reduce((total, payment) => {
+        const paymentDoc = payment as IPayment;
+        if (!paymentDoc) return total;
+        return total + (paymentDoc.amount || 0) + (paymentDoc.tdsAmount || 0);
+      }, 0);
+    }
   }
   return 0;
 });
@@ -115,19 +118,22 @@ InvoiceSchema.virtual('paidAmount').get(function (this: IInvoice) {
 // Virtual for balance due (includes both regular payments and TDS amounts)
 InvoiceSchema.virtual('balanceDue').get(function (this: IInvoice) {
   let paidAmount = 0;
-  // Ensure payments are populated and it's an array of documents, not just ObjectIDs
-  if (this.payments && this.payments.length > 0 && (this.payments[0] as IPayment).amount !== undefined) {
-    paidAmount = this.payments.reduce((total, payment) => {
-      const paymentDoc = payment as IPayment;
-      return total + paymentDoc.amount + (paymentDoc.tdsAmount || 0);
-    }, 0);
+  if (this.payments && this.payments.length > 0) {
+    const firstValidPayment = this.payments.find(p => p != null) as IPayment;
+    if (firstValidPayment && firstValidPayment.amount !== undefined) {
+      paidAmount = this.payments.reduce((total, payment) => {
+        const paymentDoc = payment as IPayment;
+        if (!paymentDoc) return total;
+        return total + (paymentDoc.amount || 0) + (paymentDoc.tdsAmount || 0);
+      }, 0);
+    }
   }
-  return this.grandTotal - paidAmount;
+  return (this.grandTotal || 0) - paidAmount;
 });
 
 // Virtual for customerId to maintain frontend compatibility
 InvoiceSchema.virtual('customerId').get(function (this: IInvoice) {
-  return this.customer._id || this.customer;
+  return this.customer?._id || this.customer;
 });
 
 // Pre-save middleware to calculate GST amounts
