@@ -116,6 +116,35 @@ export const createCustomer = asyncHandler(async (req: Request, res: Response) =
   };
   
   try {
+    // Check if customer with same name already exists
+    const nameRegex = new RegExp('^' + processedData.name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '$', 'i');
+    const existingByName = await Customer.findOne({ name: { $regex: nameRegex } });
+
+    if (existingByName) {
+      // Update missing fields
+      const updateData: any = {};
+      for (const [key, value] of Object.entries(processedData)) {
+        if (value !== undefined && value !== null && value !== '') {
+          if (!existingByName.get(key) || (key === 'gstin' && !existingByName.gstin)) {
+            updateData[key] = value;
+          }
+        }
+      }
+      
+      if (Object.keys(updateData).length > 0) {
+        const updatedCustomer = await Customer.findByIdAndUpdate(
+          existingByName._id,
+          { $set: updateData },
+          { new: true }
+        );
+        res.status(201).json(updatedCustomer);
+        return;
+      }
+      
+      res.status(201).json(existingByName);
+      return;
+    }
+
     const customer = new Customer(processedData);
     const createdCustomer = await customer.save();
     res.status(201).json(createdCustomer);

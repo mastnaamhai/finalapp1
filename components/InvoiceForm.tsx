@@ -506,6 +506,17 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
         try {
             // Handle custom invoice number
             const invoiceData = { ...invoice };
+            
+            // Ensure customer and lorryReceipts are string IDs, not populated objects
+            if (invoiceData.customer && typeof invoiceData.customer === 'object') {
+                invoiceData.customer = (invoiceData.customer as any)._id || invoiceData.customer;
+            }
+            if (invoiceData.lorryReceipts && Array.isArray(invoiceData.lorryReceipts)) {
+                invoiceData.lorryReceipts = invoiceData.lorryReceipts.map(lr => 
+                    typeof lr === 'object' && lr !== null ? (lr as any)._id || lr : lr
+                ) as any;
+            }
+
             if (allowCustomInvoiceNumber && customInvoiceNumber) {
                 // Validate custom invoice number
                 try {

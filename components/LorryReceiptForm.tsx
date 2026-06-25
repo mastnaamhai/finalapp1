@@ -573,6 +573,13 @@ export const LorryReceiptForm: React.FC<LorryReceiptFormProps> = ({
             // Prepare LR data for submission
             const lrData = { ...lr };
 
+            // Ensure consignor and consignee are string IDs, not populated objects
+            if (lrData.consignor && typeof lrData.consignor === 'object') {
+                lrData.consignor = (lrData.consignor as any)._id || lrData.consignor;
+            }
+            if (lrData.consignee && typeof lrData.consignee === 'object') {
+                lrData.consignee = (lrData.consignee as any)._id || lrData.consignee;
+            }
             // Handle LR number based on manual entry setting
             if (allowManualLr) {
                 // Manual entry enabled - only send lrNumber if user provided a valid value
