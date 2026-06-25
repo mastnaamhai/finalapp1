@@ -7,29 +7,29 @@ import { LorryReceiptStatus, InvoiceStatus } from '../types';
 import { paginationQuerySchema, createInvoiceSchema, updateInvoiceSchema } from '../utils/validation';
 import mongoose from 'mongoose';
 
-// Helper function to calculate freight total from LRs (includes all charges)
-const calculateFreightTotal = async (lrIds: string[]): Promise<{ freightTotal: number; hasZeroFreight: boolean }> => {
+// Helper function to calculate total charges from LRs (includes freight + all auxiliary charges)
+const calculateTotalChargesFromLrs = async (lrIds: string[]): Promise<{ totalCharges: number; hasZeroFreight: boolean }> => {
   const lrs = await LorryReceipt.find({ _id: { $in: lrIds } });
-  let freightTotal = 0;
+  let totalChargesSum = 0;
   let hasZeroFreight = false;
   
   lrs.forEach(lr => {
-    // Calculate total charges for this LR (freight + all other charges)
-    const totalCharges = (lr.charges?.freight || 0) + 
+    // Calculate total charges for this LR
+    const lrTotal = (lr.charges?.freight || 0) +
                         (lr.charges?.aoc || 0) + 
                         (lr.charges?.hamali || 0) + 
                         (lr.charges?.bCh || 0) + 
                         (lr.charges?.trCh || 0) + 
                         (lr.charges?.detentionCh || 0);
     
-    if (totalCharges > 0) {
-      freightTotal += totalCharges;
+    if (lrTotal > 0) {
+      totalChargesSum += lrTotal;
     } else {
       hasZeroFreight = true;
     }
   });
   
-  return { freightTotal, hasZeroFreight };
+  return { totalCharges: totalChargesSum, hasZeroFreight };
 };
 
 export const getInvoices = asyncHandler(async (req: Request, res: Response) => {
@@ -116,21 +116,31 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
       console.error('Validation error details:', JSON.stringify(validationError, null, 2));
       throw validationError;
     }
+
+    // Explicitly preserve bookingCharges since Zod validation strips it
+    if (transformedData.bookingCharges !== undefined) {
+      invoiceData.bookingCharges = transformedData.bookingCharges;
+      console.log('Preserved bookingCharges:', invoiceData.bookingCharges);
+    }
     
-    // Calculate freight total from selected LRs
-    const { freightTotal, hasZeroFreight } = await calculateFreightTotal(invoiceData.lorryReceipts);
-    console.log('Calculated freight total:', freightTotal);
+    // Calculate total charges from selected LRs
+    const { totalCharges, hasZeroFreight } = await calculateTotalChargesFromLrs(invoiceData.lorryReceipts);
+    console.log('Calculated total charges from LRs:', totalCharges);
     console.log('Has zero freight LRs:', hasZeroFreight);
     
     // Check if manual freight override is provided
     const manualFreightAmount = invoiceData.freightCharges?.amount || 0;
     const useManualFreight = manualFreightAmount > 0;
-    const finalFreightTotal = useManualFreight ? manualFreightAmount : freightTotal;
+
+    // Total taxable amount is sum of LRs + booking charges (or manual override)
+    const lrTaxableTotal = useManualFreight ? manualFreightAmount : totalCharges;
+    const finalTaxableTotal = lrTaxableTotal + (invoiceData.bookingCharges || 0);
     
     console.log('Manual freight amount:', manualFreightAmount);
     console.log('Using manual freight:', useManualFreight);
-    console.log('Final freight total:', finalFreightTotal);
-    
+    console.log('Final taxable total:', finalTaxableTotal);
+    console.log('Booking charges in invoiceData:', invoiceData.bookingCharges);
+
     // Use custom Invoice number if provided, otherwise generate one
     let invoiceNumber = invoiceData.invoiceNumber;
     let config = await NumberingConfig.findOne({ type: 'invoice' });
@@ -179,11 +189,14 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
       remarks: invoiceData.remarks || '',
       // Auto-calculated freight fields
       isAutoFreightCalculated: !useManualFreight,
-      invoiceFreightTotal: finalFreightTotal,
+      invoiceFreightTotal: finalTaxableTotal,
+      // CRITICAL FIX: Ensure totalAmount used for GST calculation matches the final total
+      totalAmount: finalTaxableTotal,
     };
     
     console.log('Invoice to create:', JSON.stringify(invoiceToCreate, null, 2));
-    
+    console.log('Booking charges in invoiceToCreate:', invoiceToCreate.bookingCharges);
+
     console.log('Creating new Invoice instance...');
     const invoice = new Invoice(invoiceToCreate);
     console.log('Invoice instance created');
@@ -204,7 +217,7 @@ export const createInvoice = asyncHandler(async (req: Request, res: Response) =>
       });
     console.log('Populated Invoice:', populatedInvoice?._id);
 
-    // Update status of associated lorry receipts
+    // Update status of associated lorry receipts (Do NOT update charges, as requested)
     if (invoiceData.lorryReceipts && invoiceData.lorryReceipts.length > 0) {
       await LorryReceipt.updateMany(
         { _id: { $in: invoiceData.lorryReceipts } },
@@ -275,11 +288,17 @@ export const updateInvoice = asyncHandler(async (req: Request, res: Response) =>
     customer: req.body.customerId || req.body.customer,
     lorryReceipts: req.body.lorryReceipts?.map((lr: any) => lr._id || lr) || req.body.lorryReceipts,
   };
-  
+
   // Remove frontend-specific fields
   delete transformedData.customerId;
-  
+
   const invoiceData = updateInvoiceSchema.parse(transformedData);
+
+  // Explicitly preserve bookingCharges since Zod validation strips it
+  if (transformedData.bookingCharges !== undefined) {
+    invoiceData.bookingCharges = transformedData.bookingCharges;
+  }
+
   const invoice = await Invoice.findById(req.params.id);
 
   if (invoice) {
@@ -287,9 +306,15 @@ export const updateInvoice = asyncHandler(async (req: Request, res: Response) =>
 
     // Calculate freight total if LRs are being updated
     if (invoiceData.lorryReceipts) {
-      const { freightTotal } = await calculateFreightTotal(invoiceData.lorryReceipts);
+      const { totalCharges } = await calculateTotalChargesFromLrs(invoiceData.lorryReceipts);
       invoiceData.isAutoFreightCalculated = true;
-      invoiceData.invoiceFreightTotal = freightTotal;
+      invoiceData.invoiceFreightTotal = totalCharges;
+      // Update totalAmount to match new LR sum + booking charges
+      invoiceData.totalAmount = totalCharges + (invoiceData.bookingCharges || invoice.bookingCharges || 0);
+    } else if (invoiceData.bookingCharges !== undefined) {
+      // If only booking charges were updated, recalculate totalAmount
+      const { totalCharges } = await calculateTotalChargesFromLrs(invoice.lorryReceipts.map(lr => lr.toString()));
+      invoiceData.totalAmount = totalCharges + invoiceData.bookingCharges;
     }
 
     Object.assign(invoice, invoiceData);
@@ -297,7 +322,7 @@ export const updateInvoice = asyncHandler(async (req: Request, res: Response) =>
 
     const newLrIds = updatedInvoice.lorryReceipts.map(lr => lr.toString());
 
-    // LRs to be marked as invoiced
+    // Update status of newly associated lorry receipts
     const toInvoice = newLrIds.filter(id => !originalLrIds.includes(id));
     if (toInvoice.length > 0) {
       await LorryReceipt.updateMany(

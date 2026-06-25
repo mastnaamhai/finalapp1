@@ -3,7 +3,7 @@ import { getLorryReceipts, createLorryReceipt, updateLorryReceipt, deleteLorryRe
 import { getInvoices, createInvoice, updateInvoice, deleteInvoice as deleteInvoiceService } from '../services/invoiceService';
 import { getPayments, createPayment } from '../services/paymentService';
 import { getTruckHiringNotes, createTruckHiringNote, updateTruckHiringNote, deleteTruckHiringNote } from '../services/truckHiringNoteService';
-import { resetApplicationData, resetBusinessData, resetAllData, backupData, restoreData } from '../services/dataService';
+import { resetBusinessData, resetAllData, backupData, restoreData } from '../services/dataService';
 import { LorryReceiptStatus } from '../types';
 import type { LorryReceipt, Invoice, Payment, TruckHiringNote } from '../types';
 
@@ -15,7 +15,6 @@ export const useAppData = () => {
 
   const fetchAllData = useCallback(async () => {
     try {
-      console.log('=== FETCHING ALL DATA ===');
       const [
         fetchedLorryReceipts,
         fetchedInvoices,
@@ -23,25 +22,17 @@ export const useAppData = () => {
         fetchedTruckHiringNotes,
       ] = await Promise.all([
         getLorryReceipts(),
-        getInvoices(),
+        getInvoices({ limit: 10000 }), // Fetch all invoices to ensure reports are accurate
         getPayments(),
+
         getTruckHiringNotes(),
       ]);
-      
-      console.log('Fetched Lorry Receipts count:', fetchedLorryReceipts?.length || 0);
-      console.log('Fetched Invoices count:', fetchedInvoices?.length || 0);
-      console.log('Fetched Payments count:', fetchedPayments?.length || 0);
-      console.log('Fetched Truck Hiring Notes count:', fetchedTruckHiringNotes?.length || 0);
-      console.log('Latest LR numbers:', fetchedLorryReceipts?.slice(0, 3).map(lr => lr.lrNumber) || []);
-      console.log('Latest Invoice numbers:', fetchedInvoices?.slice(0, 3).map(inv => inv.invoiceNumber) || []);
-      
+
       // Ensure arrays are never undefined or null
       setLorryReceipts(Array.isArray(fetchedLorryReceipts) ? fetchedLorryReceipts : []);
       setInvoices(Array.isArray(fetchedInvoices) ? fetchedInvoices : []);
       setPayments(Array.isArray(fetchedPayments) ? fetchedPayments : []);
       setTruckHiringNotes(Array.isArray(fetchedTruckHiringNotes) ? fetchedTruckHiringNotes : []);
-      
-      console.log('Data set in state successfully');
     } catch (error) {
       console.error('Failed to fetch initial data:', error);
       // Set empty arrays on error to prevent undefined issues
@@ -59,22 +50,13 @@ export const useAppData = () => {
 
   const saveLorryReceipt = async (lr: Partial<LorryReceipt>) => {
     try {
-      console.log('=== SAVING LORRY RECEIPT ===');
-      console.log('LR data to save:', lr);
-      
-      let savedLr;
       if (lr._id) {
-        console.log('Updating existing LR:', lr._id);
-        savedLr = await updateLorryReceipt(lr._id, lr);
+        await updateLorryReceipt(lr._id, lr);
       } else {
-        console.log('Creating new LR');
-        savedLr = await createLorryReceipt(lr as Omit<LorryReceipt, '_id' | 'id'>);
+        await createLorryReceipt(lr as Omit<LorryReceipt, '_id' | 'id'>);
       }
-      
-      console.log('LR saved successfully:', savedLr);
-      console.log('Refreshing all data...');
+
       await fetchAllData();
-      console.log('Data refresh completed');
     } catch (error) {
       console.error('Failed to save LR:', error);
       throw error;
@@ -99,7 +81,7 @@ export const useAppData = () => {
           return lr._id;
         }).filter(id => id)
       );
-      
+
       for (const lrId of invoicedLrIds) {
         await updateLorryReceipt(lrId, { status: LorryReceiptStatus.INVOICED });
       }
@@ -124,6 +106,7 @@ export const useAppData = () => {
       await updateTruckHiringNote(id, note);
       await fetchAllData();
     } catch (error) {
+      console.error('useAppData - Error:', error);
       throw error;
     }
   };
@@ -221,7 +204,6 @@ export const useAppData = () => {
       await restoreData(data);
       await fetchAllData();
     } catch (error: any) {
-      console.error('Restore error:', error);
       throw new Error(`Failed to restore data: ${error.message}`);
     }
   };

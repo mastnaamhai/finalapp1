@@ -3,7 +3,7 @@ import type { Customer, Invoice, Payment, TruckHiringNote, CompanyInfo } from '.
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Select } from './ui/Select';
-import type { View } from '../App';
+import type { View } from '../types';
 
 interface SimpleLedgerProps {
   customers: Customer[];
@@ -23,8 +23,10 @@ export const SimpleLedger: React.FC<SimpleLedgerProps> = (props) => {
   const customerPayments = selectedCustomer ? props.payments.filter(p => p.customerId === selectedCustomerId) : [];
 
   const totalInvoiced = customerInvoices.reduce((sum, inv) => sum + inv.grandTotal, 0);
-  const totalPaid = customerPayments.reduce((sum, p) => sum + p.amount, 0);
-  const balance = totalInvoiced - totalPaid;
+  const totalCash = customerPayments.reduce((sum, p) => sum + p.amount, 0);
+  const totalTds = customerPayments.reduce((sum, p) => sum + (p.tdsAmount || 0), 0);
+  const totalSettled = totalCash + totalTds;
+  const balance = totalInvoiced - totalSettled;
 
   return (
     <div className="space-y-6">
@@ -56,15 +58,19 @@ export const SimpleLedger: React.FC<SimpleLedgerProps> = (props) => {
       {selectedCustomer && (
         <Card>
           <h3 className="text-xl font-semibold mb-4">{selectedCustomer.name} - Account Summary</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="bg-blue-50 p-4 rounded-lg">
               <h4 className="font-semibold text-blue-800">Total Invoiced</h4>
               <p className="text-2xl font-bold text-blue-600">₹{totalInvoiced.toFixed(2)}</p>
             </div>
             <div className="bg-green-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-green-800">Total Paid</h4>
-              <p className="text-2xl font-bold text-green-600">₹{totalPaid.toFixed(2)}</p>
+              <h4 className="font-semibold text-green-800">Total Settled</h4>
+              <p className="text-2xl font-bold text-green-600">₹{totalSettled.toFixed(2)}</p>
+              <div className="text-xs text-green-700 mt-1 flex justify-between">
+                <span>Cash: ₹{totalCash.toFixed(2)}</span>
+                <span>TDS: ₹{totalTds.toFixed(2)}</span>
+              </div>
             </div>
             <div className={`p-4 rounded-lg ${balance >= 0 ? 'bg-red-50' : 'bg-green-50'}`}>
               <h4 className={`font-semibold ${balance >= 0 ? 'text-red-800' : 'text-green-800'}`}>
@@ -102,11 +108,10 @@ export const SimpleLedger: React.FC<SimpleLedgerProps> = (props) => {
                         ₹{invoice.grandTotal.toFixed(2)}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          invoice.status === 'Paid' ? 'bg-green-100 text-green-800' :
+                        <span className={`px-2 py-1 text-xs rounded-full ${invoice.status === 'Paid' ? 'bg-green-100 text-green-800' :
                           invoice.status === 'Partially Paid' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
+                            'bg-red-100 text-red-800'
+                          }`}>
                           {invoice.status}
                         </span>
                       </td>
@@ -138,10 +143,9 @@ export const SimpleLedger: React.FC<SimpleLedgerProps> = (props) => {
                         {new Date(payment.date).toLocaleDateString('en-IN')}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          payment.type === 'Advance' ? 'bg-blue-100 text-blue-800' :
+                        <span className={`px-2 py-1 text-xs rounded-full ${payment.type === 'Advance' ? 'bg-blue-100 text-blue-800' :
                           'bg-green-100 text-green-800'
-                        }`}>
+                          }`}>
                           {payment.type}
                         </span>
                       </td>

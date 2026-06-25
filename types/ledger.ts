@@ -4,7 +4,7 @@ export interface LedgerTransaction {
   _id: string;
   date: string;
   voucherNumber?: string;
-  voucherType: 'INVOICE' | 'PAYMENT' | 'ADVANCE' | 'RECEIPT' | 'JOURNAL' | 'THN';
+  voucherType: 'INVOICE' | 'PAYMENT' | 'ADVANCE' | 'JOURNAL' | 'THN';
   particulars: string;
   debit: number;
   credit: number;
@@ -23,7 +23,7 @@ export interface LedgerTransaction {
 export interface ClientLedgerEntry {
   date: string;
   voucherNumber?: string;
-  voucherType: 'INVOICE' | 'PAYMENT' | 'ADVANCE' | 'RECEIPT';
+  voucherType: 'INVOICE' | 'PAYMENT' | 'ADVANCE';
   particulars: string;
   debit: number;
   credit: number;

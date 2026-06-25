@@ -11,8 +11,9 @@ export interface ITruckHiringNote extends Document {
   unloadingLocation: string;
   loadingDateTime: string;
   expectedDeliveryDate: string;
+  podDate?: string;
   agencyName: string;
-  truckOwnerContact?: string;
+  brokerContact?: string;
   freightRate: number;
   advanceAmount: number;
   balanceAmount: number;
@@ -40,8 +41,9 @@ const TruckHiringNoteSchema = new Schema({
   unloadingLocation: { type: String },
   loadingDateTime: { type: String },
   expectedDeliveryDate: { type: String },
+  podDate: { type: String },
   agencyName: { type: String, required: true },
-  truckOwnerContact: { type: String },
+  brokerContact: { type: String },
   freightRate: { type: Number, required: true },
   advanceAmount: { type: Number, default: 0 },
   balanceAmount: { type: Number, required: true },
@@ -50,6 +52,8 @@ const TruckHiringNoteSchema = new Schema({
   remarks: { type: String },
   linkedLR: { type: String },
   linkedInvoice: { type: String },
+  goodsType: { type: String, default: '' },
+  truckType: { type: String, default: '' },
   status: {
     type: String,
     enum: Object.values(THNStatus),

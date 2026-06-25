@@ -6,6 +6,9 @@ import { Button } from './ui/Button';
 import { UniversalSearchSort, SortOption } from './ui/UniversalSearchSort';
 import { Pagination } from './ui/Pagination';
 
+import { PageContainer } from './ui/PageContainer';
+import { PageHeader } from './ui/PageHeader';
+
 interface TransactionHistoryProps {
   payments: Payment[];
   invoices: Invoice[];
@@ -68,8 +71,11 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
         }
       }
 
-      // Find customer name from payment.customerId
-      const customer = customers.find(c => c._id === payment.customerId);
+      // Find customer name from payment.customerId or payment.customer object
+      const customerId = (payment as any).customerId ||
+        (typeof payment.customer === 'string' ? payment.customer : (payment.customer as any)?._id);
+
+      const customer = customers.find(c => c._id === customerId);
 
       return {
         ...payment,
@@ -88,11 +94,11 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(payment =>
-        payment.customerName.toLowerCase().includes(searchLower) ||
-        payment.documentNumber.toLowerCase().includes(searchLower) ||
-        payment.documentType.toLowerCase().includes(searchLower) ||
-        payment.type.toLowerCase().includes(searchLower) ||
-        payment.mode.toLowerCase().includes(searchLower) ||
+        (payment.customerName || '').toLowerCase().includes(searchLower) ||
+        (payment.documentNumber || '').toLowerCase().includes(searchLower) ||
+        (payment.documentType || '').toLowerCase().includes(searchLower) ||
+        (payment.type || '').toLowerCase().includes(searchLower) ||
+        (payment.mode || '').toLowerCase().includes(searchLower) ||
         (payment.referenceNo || '').toLowerCase().includes(searchLower)
       );
     }
@@ -165,13 +171,13 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
   const filteredPaymentsCount = filteredPayments.length;
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold text-gray-800">Transaction History</h2>
-          <Button variant="secondary" onClick={onBack}>Back</Button>
-        </div>
+    <PageContainer>
+      <PageHeader
+        title="Transaction History"
+        actions={<Button variant="secondary" onClick={onBack}>Back</Button>}
+      />
 
+      <Card>
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-blue-50 p-4 rounded-lg">
@@ -242,11 +248,10 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                      payment.type === 'Advance' ? 'bg-blue-100 text-blue-800' :
-                      payment.type === 'Receipt' ? 'bg-green-100 text-green-800' :
-                      'bg-purple-100 text-purple-800'
-                    }`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${payment.type === 'Advance' ? 'bg-blue-100 text-blue-800' :
+                      payment.type === 'Payment' ? 'bg-green-100 text-green-800' :
+                        'bg-purple-100 text-purple-800'
+                      }`}>
                       {payment.type}
                     </span>
                   </td>
@@ -254,12 +259,11 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                     ₹{payment.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                      payment.mode === 'Cash' ? 'bg-gray-100 text-gray-800' :
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${payment.mode === 'Cash' ? 'bg-gray-100 text-gray-800' :
                       payment.mode === 'UPI' ? 'bg-purple-100 text-purple-800' :
-                      payment.mode === 'NEFT' || payment.mode === 'RTGS' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
+                        payment.mode === 'NEFT' || payment.mode === 'RTGS' ? 'bg-blue-100 text-blue-800' :
+                          'bg-yellow-100 text-yellow-800'
+                      }`}>
                       {payment.mode}
                     </span>
                   </td>
@@ -309,6 +313,6 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
           />
         </div>
       </Card>
-    </div>
+    </PageContainer>
   );
 };

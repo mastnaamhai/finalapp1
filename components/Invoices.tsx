@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Invoice, Customer, CompanyInfo, Payment } from '../types';
 import { InvoiceStatus } from '../types';
-import type { View } from '../App';
+import type { View } from '../types';
 import { formatDate } from '../services/utils';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -12,6 +12,8 @@ import { Pagination } from './ui/Pagination';
 import { StatusBadge, getStatusVariant } from './ui/StatusBadge';
 import { UniversalSearchSort, SortOption } from './ui/UniversalSearchSort';
 import { getInvoiceWidthPx } from '../constants/invoiceDimensions';
+import { PageContainer } from './ui/PageContainer';
+import { PageHeader } from './ui/PageHeader';
 
 interface InvoicesProps {
   invoices: Invoice[];
@@ -26,22 +28,43 @@ interface InvoicesProps {
 }
 
 interface InvoicesTableFilters {
-    searchTerm: string;
-    sortBy: string;
-    sortOrder: 'asc' | 'desc';
+  searchTerm: string;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
 }
 
 // Helper function to calculate payment information for an invoice
 const calculatePaymentInfo = (invoice: Invoice, payments: Payment[]) => {
-  const invoicePayments = payments.filter(p => {
+  // Legacy: Payments linked via invoiceId
+  const directPayments = payments.filter(p => {
     // Handle both string ID and populated object cases
     const paymentInvoiceId = typeof p.invoiceId === 'string' ? p.invoiceId : (p.invoiceId as any)?._id;
     return paymentInvoiceId === invoice._id;
   });
-  const paidAmount = invoicePayments.reduce((sum, p) => sum + p.amount, 0);
+
+  const directPaidAmount = directPayments.reduce((sum, p) => sum + p.amount + (p.tdsAmount || 0), 0);
+
+  // New System: Settlements recorded within the invoice
+  const settledAmount = (invoice.settlements || []).reduce((sum, s) => sum + s.amount, 0);
+
+  // Total Paid = Legacy Direct Payments + New settlements
+  const paidAmount = directPaidAmount + settledAmount;
+
+  // Calculate TDS
+  const directTdsAmount = directPayments.reduce((sum, p) => sum + (p.tdsAmount || 0), 0);
+  // For settlements, we'd need to link back to payments. For simplicity, we'll sum direct TDS 
+  // and check if settlements have associated payments with TDS.
+  const settlementTdsAmount = (invoice.settlements || []).reduce((sum, s) => {
+    const payment = payments.find(p => (typeof p === 'string' ? p : p._id) === s.paymentId);
+    // If the payment is allocated via settlement, the TDS is usually already recorded in the payment object.
+    // This is a simplified approach.
+    return sum + (payment?.tdsAmount || 0);
+  }, 0);
+
+  const totalTdsAmount = directTdsAmount + settlementTdsAmount;
   const balanceDue = invoice.grandTotal - paidAmount;
-  
-  return { paidAmount, balanceDue };
+
+  return { paidAmount, balanceDue, tdsAmount: totalTdsAmount };
 };
 
 const PreviewModal: React.FC<{
@@ -49,7 +72,8 @@ const PreviewModal: React.FC<{
   onClose: () => void;
   companyInfo: CompanyInfo;
   customers: Customer[];
-}> = ({ item, onClose, companyInfo, customers }) => {
+  payments: Payment[];
+}> = ({ item, onClose, companyInfo, customers, payments }) => {
   const [isClosing, setIsClosing] = useState(false);
   const [zoom, setZoom] = useState(100);
   const previewContainerRef = useRef<HTMLDivElement>(null);
@@ -58,16 +82,16 @@ const PreviewModal: React.FC<{
   useEffect(() => {
     const calculateInitialZoom = () => {
       if (!previewContainerRef.current) return;
-      
+
       const container = previewContainerRef.current;
       const containerWidth = container.clientWidth;
-      
+
       // Invoice width - now configurable (default: 550mm)
       // Get the actual invoice width in pixels
       const invoiceWidthPx = getInvoiceWidthPx();
       const padding = 32; // Horizontal padding in preview
       const availableWidth = containerWidth - padding;
-      
+
       // Calculate zoom to fit width with some margin
       const calculatedZoom = Math.min(Math.max(50, Math.floor((availableWidth / invoiceWidthPx) * 100)), 150);
       setZoom(calculatedZoom);
@@ -75,10 +99,10 @@ const PreviewModal: React.FC<{
 
     // Calculate after a short delay to ensure container is rendered
     const timer = setTimeout(calculateInitialZoom, 100);
-    
+
     // Recalculate on window resize
     window.addEventListener('resize', calculateInitialZoom);
-    
+
     return () => {
       clearTimeout(timer);
       window.removeEventListener('resize', calculateInitialZoom);
@@ -98,7 +122,7 @@ const PreviewModal: React.FC<{
   const closeModal = () => {
     setIsClosing(true);
     setTimeout(() => {
-        onClose();
+      onClose();
     }, 300); // Match animation duration
   };
 
@@ -170,9 +194,9 @@ const PreviewModal: React.FC<{
           </div>
         </div>
         <div className="overflow-auto bg-gray-200 flex-1" ref={previewContainerRef}>
-          <div 
+          <div
             className="p-2 sm:p-4 md:p-8 flex justify-center"
-            style={{ 
+            style={{
               transform: `scale(${zoom / 100})`,
               transformOrigin: 'top center',
               transition: 'transform 0.3s ease'
@@ -183,6 +207,7 @@ const PreviewModal: React.FC<{
                 invoice={item.data as Invoice}
                 companyInfo={companyInfo}
                 customers={customers}
+                payments={payments}
               />
             )}
           </div>
@@ -197,12 +222,12 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, payments, customer
   const [searchTerm, setSearchTerm] = useState(initialFilters?.searchTerm || '');
   const [sortBy, setSortBy] = useState(initialFilters?.sortBy || 'invoiceNumber');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(initialFilters?.sortOrder || 'desc');
-  const [previewItem, setPreviewItem] = useState<{type: 'INVOICE', data: Invoice} | null>(null);
+  const [previewItem, setPreviewItem] = useState<{ type: 'INVOICE', data: Invoice } | null>(null);
   const [isPaymentFormOpen, setIsPaymentFormOpen] = useState(false);
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<Invoice | null>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedInvoiceForHistory, setSelectedInvoiceForHistory] = useState<Invoice | null>(null);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -246,7 +271,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, payments, customer
     filtered.sort((a, b) => {
       let aValue: any = '';
       let bValue: any = '';
-      
+
       switch (sortBy) {
         case 'invoiceNumber':
           aValue = a.invoiceNumber;
@@ -272,7 +297,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, payments, customer
           aValue = a.invoiceNumber;
           bValue = b.invoiceNumber;
       }
-      
+
       if (sortOrder === 'asc') {
         return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
       } else {
@@ -302,7 +327,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, payments, customer
   };
 
   return (
-    <div className="space-y-8">
+    <PageContainer>
       {isPaymentFormOpen && selectedInvoiceForPayment && (
         <UniversalPaymentForm
           invoiceId={selectedInvoiceForPayment._id}
@@ -327,17 +352,22 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, payments, customer
           onClose={() => setPreviewItem(null)}
           companyInfo={companyInfo}
           customers={customers}
+          payments={payments}
         />
       )}
+
+      <PageHeader
+        title="Invoices"
+        subtitle="Manage billing and payments"
+        actions={
+          <div className="flex gap-2">
+            <Button onClick={() => onViewChange({ name: 'CREATE_INVOICE' })}>Create New</Button>
+            <Button onClick={onBack} variant="secondary">Back</Button>
+          </div>
+        }
+      />
+
       <Card>
-        <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Invoices</h2>
-            <div className="space-x-2">
-              <Button onClick={() => onViewChange({ name: 'CREATE_INVOICE' })}>Create New Invoice</Button>
-              <Button onClick={onBack} variant="secondary">Back to Dashboard</Button>
-            </div>
-        </div>
-        
         <UniversalSearchSort
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -354,7 +384,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, payments, customer
       </Card>
 
       <Card>
-         <div className="overflow-x-auto">
+        <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-slate-100">
               <tr>
@@ -363,6 +393,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, payments, customer
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
                 <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
                 <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Paid Amount</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">TDS Deducted</th>
                 <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance Due</th>
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -370,34 +401,35 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, payments, customer
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedInvoices.map(inv => {
-                const { paidAmount, balanceDue } = calculatePaymentInfo(inv, payments);
+                const { paidAmount, balanceDue, tdsAmount } = calculatePaymentInfo(inv, payments);
                 return (
-                <tr key={inv._id} onClick={() => setPreviewItem({ type: 'INVOICE', data: inv })} className="hover:bg-slate-50 transition-colors duration-200 cursor-pointer">
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{inv.invoiceNumber}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{formatDate(inv.date)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{inv.customer?.name}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">₹{(inv.grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-green-600 text-right">₹{paidAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-red-600 font-semibold text-right">₹{balanceDue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <StatusBadge status={inv.status} variant={getStatusVariant(inv.status)} size="sm" />
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    {inv.status !== InvoiceStatus.PAID && (
-                      <button onClick={(e) => { e.stopPropagation(); handleOpenPaymentForm(inv); }} className="text-blue-600 hover:text-blue-900 transition-colors">Add Payment</button>
-                    )}
-                    <button onClick={(e) => { e.stopPropagation(); handleOpenHistoryModal(inv); }} className="text-gray-600 hover:text-gray-900 transition-colors">History</button>
-                    <button onClick={(e) => { e.stopPropagation(); onViewChange({ name: 'VIEW_INVOICE', id: inv._id }); }} className="text-indigo-600 hover:text-indigo-900 transition-colors">View PDF</button>
-                    <button onClick={(e) => { e.stopPropagation(); onViewChange({ name: 'EDIT_INVOICE', id: inv._id }); }} className="text-green-600 hover:text-green-900 transition-colors">Edit</button>
-                    <button onClick={(e) => { e.stopPropagation(); onDeleteInvoice(inv._id); }} className="text-red-600 hover:text-red-900 transition-colors">Delete</button>
-                  </td>
-                </tr>
+                  <tr key={inv._id} onClick={() => setPreviewItem({ type: 'INVOICE', data: inv })} className="hover:bg-slate-50 transition-colors duration-200 cursor-pointer">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{inv.invoiceNumber}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{formatDate(inv.date)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{inv.customer?.name}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">₹{(inv.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-green-600 text-right">₹{paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 text-right">₹{tdsAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-red-600 font-semibold text-right">₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                      <StatusBadge status={inv.status} variant={getStatusVariant(inv.status)} size="sm" />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      {inv.status !== InvoiceStatus.PAID && (
+                        <button onClick={(e) => { e.stopPropagation(); handleOpenPaymentForm(inv); }} className="text-blue-600 hover:text-blue-900 transition-colors">Add Payment</button>
+                      )}
+                      <button onClick={(e) => { e.stopPropagation(); handleOpenHistoryModal(inv); }} className="text-gray-600 hover:text-gray-900 transition-colors">History</button>
+                      <button onClick={(e) => { e.stopPropagation(); onViewChange({ name: 'VIEW_INVOICE', id: inv._id }); }} className="text-indigo-600 hover:text-indigo-900 transition-colors">View PDF</button>
+                      <button onClick={(e) => { e.stopPropagation(); onViewChange({ name: 'EDIT_INVOICE', id: inv._id }); }} className="text-green-600 hover:text-green-900 transition-colors">Edit</button>
+                      <button onClick={(e) => { e.stopPropagation(); onDeleteInvoice(inv._id); }} className="text-red-600 hover:text-red-900 transition-colors">Delete</button>
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        
+
         {/* Pagination */}
         <div className="mt-6">
           <Pagination
@@ -410,6 +442,6 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, payments, customer
           />
         </div>
       </Card>
-    </div>
+    </PageContainer>
   );
 };

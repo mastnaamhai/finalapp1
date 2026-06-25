@@ -8,7 +8,7 @@ export const TruckHiringNotesWrapper: React.FC = () => {
   
   const filters = {
     status: searchParams.get('status') || undefined,
-    truckOwner: searchParams.get('truckOwner') || undefined,
+    broker: searchParams.get('broker') || undefined,
     dateFrom: searchParams.get('dateFrom') || undefined,
     dateTo: searchParams.get('dateTo') || undefined,
   };

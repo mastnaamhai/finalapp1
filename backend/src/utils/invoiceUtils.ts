@@ -7,13 +7,11 @@ export const updateInvoiceStatus = async (invoiceId: string) => {
   try {
     const invoice = await Invoice.findById(invoiceId);
     if (!invoice) {
-      // Invoice might have been deleted, so we just log this.
-      console.log(`Invoice with ID ${invoiceId} not found for status update.`);
       return;
     }
 
     const payments = await Payment.find({ invoiceId: invoiceId });
-    const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
+    const totalPaid = payments.reduce((sum, payment) => sum + payment.amount + (payment.tdsAmount || 0), 0);
 
     let newStatus: InvoiceStatus;
     if (totalPaid >= invoice.grandTotal) {

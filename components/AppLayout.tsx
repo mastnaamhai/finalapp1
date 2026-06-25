@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Navigation } from './Navigation';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -6,7 +6,7 @@ import { ToastContainer, type Toast } from './ui/Toast';
 import { PerformanceMonitor } from './ui/PerformanceMonitor';
 import { ModalManager } from './ui/ModalManager';
 import { GlobalStyles } from './ui/GlobalStyles';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+
 import { useCustomers } from '../hooks/useCustomers';
 import { useAppData } from '../hooks/useAppData';
 import { useAuth } from '../hooks/useAuth';
@@ -18,13 +18,13 @@ export const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, handleLogout, isLoading } = useAuth();
-  
+
   const { customers, fetchCustomers, createCustomer, updateCustomer, deleteCustomer } = useCustomers();
-  const { 
-    lorryReceipts, 
-    invoices, 
-    payments, 
-    truckHiringNotes, 
+  const {
+    lorryReceipts,
+    invoices,
+    payments,
+    truckHiringNotes,
     fetchAllData,
     saveLorryReceipt,
     saveInvoice,
@@ -41,13 +41,13 @@ export const AppLayout: React.FC = () => {
     handleBackup,
     handleRestore
   } = useAppData();
-  
+
   const { companyInfo, saveCompanyInfo } = useCompanyInfo();
 
   // Toast state and helpers
   const [toasts, setToasts] = useState<Toast[]>([]);
   const pushToast = (kind: Toast['kind'], message: string) => {
-    const id = Date.now() + Math.floor(Math.random()*1000);
+    const id = Date.now() + Math.floor(Math.random() * 1000);
     setToasts(prev => [...prev, { id, kind, message }]);
     // auto-dismiss after 5s
     setTimeout(() => dismissToast(id), 5000);
@@ -65,7 +65,7 @@ export const AppLayout: React.FC = () => {
     }
   };
 
-  const handleChangePassword = async (currentPassword: string, newPassword: string): Promise<{success: boolean, message: string}> => {
+  const handleChangePassword = async (currentPassword: string, newPassword: string): Promise<{ success: boolean, message: string }> => {
     try {
       const { changePassword } = await import('../services/userService');
       const result = await changePassword(currentPassword, newPassword);
@@ -111,7 +111,7 @@ export const AppLayout: React.FC = () => {
     customers,
     truckHiringNotes,
     companyInfo,
-    
+
     // Actions
     saveLorryReceipt,
     saveInvoice,
@@ -133,11 +133,11 @@ export const AppLayout: React.FC = () => {
     saveCompanyInfo,
     fetchAllData,
     fetchCustomers,
-    
+
     // Navigation
     navigate,
     location,
-    
+
     // Toast
     pushToast,
     handleAndToastApiError
@@ -162,29 +162,26 @@ export const AppLayout: React.FC = () => {
 
   return (
     <div className="bg-gray-50 min-h-screen font-sans">
-      <Navigation 
+      <Navigation
         onLogout={handleLogout}
         isAuthenticated={isAuthenticated}
         companyInfo={{ logo: companyInfo?.logo, name: companyInfo?.name }}
       />
-      
+
       {/* Main content area with responsive layout - Optimized for expanded space */}
-      <div className="lg:pl-16">
+      <div className="lg:pl-20">
         {/* Mobile header spacer */}
         <div className="h-16 lg:h-0 safe-area-inset-top" />
-        
-        <main className="p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
+
+        <main className="p-4 sm:p-6 lg:p-8 pb-8">
           <div className="mx-auto w-full max-w-none">
             <ErrorBoundary>
               <Outlet context={appContextValue} />
             </ErrorBoundary>
           </div>
         </main>
-        
-        {/* Mobile bottom nav spacer */}
-        <div className="h-20 lg:h-0 safe-area-inset-bottom" />
       </div>
-      
+
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <PerformanceMonitor />
       <ModalManager />

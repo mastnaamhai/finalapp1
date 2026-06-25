@@ -27,6 +27,7 @@ export const createInvoiceSchema = z.object({
   // Auto-calculated freight fields
   isAutoFreightCalculated: z.boolean().optional(),
   invoiceFreightTotal: z.number().nonnegative().optional(),
+  bookingCharges: z.number().nonnegative(),
   // Separate freight charges fields
   freightCharges: z.object({
     amount: z.number().nonnegative().optional(),
@@ -34,7 +35,7 @@ export const createInvoiceSchema = z.object({
     transporterName: z.string().optional(),
     lrNumber: z.string().optional(),
   }).optional(),
-});
+}).passthrough();
 
 export const updateInvoiceSchema = createInvoiceSchema.partial();
 
@@ -89,7 +90,7 @@ export const createPaymentSchema = z.object({
   invoiceId: z.string().optional(),
   truckHiringNoteId: z.string().optional(),
   customer: z.string().optional(),
-  amount: z.number().positive(),
+  amount: z.number().nonnegative(),
   date: z.string().min(1),
   type: z.nativeEnum(PaymentType),
   mode: z.nativeEnum(PaymentMode),
@@ -105,13 +106,13 @@ export const createPaymentSchema = z.object({
 }).refine(data => data.invoiceId ? (data.customer && data.customer.trim().length > 0) : true, {
   message: 'Customer is required for invoice payments',
 }).refine(data => {
-  // TDS can only be applied to Receipts
-  if (data.tdsApplicable && data.type !== PaymentType.RECEIPT) {
+  // TDS can only be applied to Advances (Invoices)
+  if (data.tdsApplicable && data.type !== PaymentType.ADVANCE) {
     return false;
   }
   return true;
 }, {
-  message: 'TDS can only be applied to Receipts',
+  message: 'TDS can only be applied to Advances',
 }).refine(data => {
   // If TDS is applicable, rate is required
   if (data.tdsApplicable && (data.tdsRate === undefined || data.tdsRate === null)) {
@@ -120,6 +121,14 @@ export const createPaymentSchema = z.object({
   return true;
 }, {
   message: 'TDS rate is required when TDS is applicable',
+}).refine(data => {
+  // Ensure we are either paying something or recording TDS
+  if (data.amount === 0 && (!data.tdsAmount || data.tdsAmount === 0)) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Payment amount must be greater than 0, or a TDS amount must be specified',
 });
 
 export const updatePaymentSchema = createPaymentSchema.partial();
@@ -132,15 +141,20 @@ export const createTruckHiringNoteSchema = z.object({
   weightUnit: z.enum(['KG', 'MT', 'Tons']).optional(),
   loadingLocation: z.string().optional(),
   unloadingLocation: z.string().optional(),
+  loadingDateTime: z.string().optional(),
+  expectedDeliveryDate: z.string().optional(),
   agencyName: z.string().min(1),
-  truckOwnerContact: z.string().optional(),
+  brokerContact: z.string().optional(),
   freightRate: z.number().nonnegative(),
   advanceAmount: z.number().nonnegative().optional(),
   paymentTerms: z.string().optional(),
+  podDate: z.string().optional(),
   additionalCharges: z.number().nonnegative().optional(),
   remarks: z.string().optional(),
   linkedLR: z.string().optional(),
   linkedInvoice: z.string().optional(),
+  goodsType: z.string().optional(),
+  truckType: z.string().optional(),
 });
 
 export const updateTruckHiringNoteSchema = createTruckHiringNoteSchema.partial();

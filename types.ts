@@ -32,7 +32,6 @@ export enum THNStatus {
 
 export enum PaymentType {
   ADVANCE = 'Advance',
-  RECEIPT = 'Receipt',
   PAYMENT = 'Payment',
 }
 
@@ -136,6 +135,9 @@ export interface Invoice {
   gstType: GstType;
   cgstRate: number;
   sgstRate: number;
+  igstRate: number;
+  cgstAmount: number;
+  sgstAmount: number;
   igstAmount: number;
   grandTotal: number;
   isRcm: boolean;
@@ -144,6 +146,7 @@ export interface Invoice {
   // Auto-calculated freight fields
   isAutoFreightCalculated: boolean;
   invoiceFreightTotal: number;
+  bookingCharges?: number;
   // Separate freight charges fields
   freightCharges?: {
     amount: number;
@@ -202,8 +205,9 @@ export interface TruckHiringNote {
   unloadingLocation?: string;
   loadingDateTime?: string;
   expectedDeliveryDate?: string;
+  podDate?: string;
   agencyName: string;
-  truckOwnerContact?: string;
+  brokerContact?: string;
   freightRate: number;
   advanceAmount: number;
   balanceAmount: number;
@@ -212,6 +216,8 @@ export interface TruckHiringNote {
   remarks?: string;
   linkedLR?: string;
   linkedInvoice?: string;
+  goodsType: string;
+  truckType: string;
   status: THNStatus;
   paidAmount: number;
   payments: Payment[];
@@ -283,7 +289,7 @@ export interface LedgerTransaction {
   _id: string;
   date: string;
   voucherNumber?: string;
-  voucherType: 'INVOICE' | 'PAYMENT' | 'ADVANCE' | 'RECEIPT' | 'JOURNAL' | 'THN';
+  voucherType: 'INVOICE' | 'PAYMENT' | 'ADVANCE' | 'JOURNAL' | 'THN';
   particulars: string;
   debit: number;
   credit: number;
@@ -302,7 +308,7 @@ export interface LedgerTransaction {
 export interface ClientLedgerEntry {
   date: string;
   voucherNumber?: string;
-  voucherType: 'INVOICE' | 'PAYMENT' | 'ADVANCE' | 'RECEIPT';
+  voucherType: 'INVOICE' | 'PAYMENT' | 'ADVANCE';
   particulars: string;
   debit: number;
   credit: number;
@@ -409,4 +415,11 @@ export interface CompanyInfo {
   currentBankAccount?: BankAccount;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// View State Type
+export interface View {
+  name: string;
+  id?: string;
+  [key: string]: any;
 }

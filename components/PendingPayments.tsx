@@ -7,6 +7,8 @@ import { Button } from './ui/Button';
 import { UniversalPaymentForm } from './UniversalPaymentForm';
 import { UniversalSearchSort, SortOption } from './ui/UniversalSearchSort';
 import { Pagination } from './ui/Pagination';
+import { PageContainer } from './ui/PageContainer';
+import { PageHeader } from './ui/PageHeader';
 import type { View } from '../App';
 
 interface PendingPaymentsProps {
@@ -19,12 +21,12 @@ interface PendingPaymentsProps {
 export const PendingPayments: React.FC<PendingPaymentsProps> = ({ invoices, onSavePayment, onBack, onViewChange }) => {
   const [isPaymentFormOpen, setIsPaymentFormOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  
+
   // Search and sort state
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -41,7 +43,7 @@ export const PendingPayments: React.FC<PendingPaymentsProps> = ({ invoices, onSa
 
   const pendingInvoices = useMemo(() => {
     let filtered = invoices.filter(inv => inv.status === InvoiceStatus.UNPAID || inv.status === InvoiceStatus.PARTIALLY_PAID);
-    
+
     // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
@@ -59,7 +61,7 @@ export const PendingPayments: React.FC<PendingPaymentsProps> = ({ invoices, onSa
     filtered.sort((a, b) => {
       let aValue: any = '';
       let bValue: any = '';
-      
+
       switch (sortBy) {
         case 'invoiceNumber':
           aValue = a.invoiceNumber;
@@ -89,7 +91,7 @@ export const PendingPayments: React.FC<PendingPaymentsProps> = ({ invoices, onSa
           aValue = new Date(a.date);
           bValue = new Date(b.date);
       }
-      
+
       if (sortOrder === 'asc') {
         return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
       } else {
@@ -124,7 +126,12 @@ export const PendingPayments: React.FC<PendingPaymentsProps> = ({ invoices, onSa
   };
 
   return (
-    <div className="space-y-6">
+    <PageContainer>
+      <PageHeader
+        title="Pending Payments"
+        actions={<Button variant="secondary" onClick={onBack}>Back</Button>}
+      />
+
       {isPaymentFormOpen && selectedInvoice && (
         <UniversalPaymentForm
           invoiceId={selectedInvoice._id}
@@ -136,13 +143,9 @@ export const PendingPayments: React.FC<PendingPaymentsProps> = ({ invoices, onSa
           title={`Add Payment for Invoice #${selectedInvoice.invoiceNumber}`}
         />
       )}
-      
+
       <Card>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Pending Payments</h2>
-          <Button variant="secondary" onClick={onBack}>Back</Button>
-        </div>
-        
+
         <UniversalSearchSort
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -173,8 +176,8 @@ export const PendingPayments: React.FC<PendingPaymentsProps> = ({ invoices, onSa
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedInvoices.map(invoice => (
-                <tr 
-                  key={invoice._id} 
+                <tr
+                  key={invoice._id}
                   className="hover:bg-slate-50 cursor-pointer transition-colors duration-200"
                   onClick={() => onViewChange({ name: 'VIEW_INVOICE', id: invoice._id })}
                 >
@@ -183,20 +186,19 @@ export const PendingPayments: React.FC<PendingPaymentsProps> = ({ invoices, onSa
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{formatDate(invoice.date)}</td>
                   <td className="px-6 py-4 text-right text-sm font-semibold text-red-600">₹{(invoice.balanceDue || invoice.grandTotal).toLocaleString('en-IN')}</td>
                   <td className="px-6 py-4 text-center text-sm">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      invoice.status === InvoiceStatus.UNPAID ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${invoice.status === InvoiceStatus.UNPAID ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
                       {invoice.status}
                     </span>
                   </td>
-                   <td className="px-6 py-4 text-right text-sm">
-                      <Button 
-                        variant="secondary" 
-                        onClick={(e) => { e.stopPropagation(); handleOpenPaymentForm(invoice); }}
-                      >
-                        Add Payment
-                      </Button>
-                   </td>
+                  <td className="px-6 py-4 text-right text-sm">
+                    <Button
+                      variant="secondary"
+                      onClick={(e) => { e.stopPropagation(); handleOpenPaymentForm(invoice); }}
+                    >
+                      Add Payment
+                    </Button>
+                  </td>
                 </tr>
               ))}
               {paginatedInvoices.length === 0 && (
@@ -205,8 +207,8 @@ export const PendingPayments: React.FC<PendingPaymentsProps> = ({ invoices, onSa
                     {searchTerm ? (
                       <div>
                         <p>No pending payments found matching "{searchTerm}"</p>
-                        <Button 
-                          variant="link" 
+                        <Button
+                          variant="link"
                           onClick={handleClearSearch}
                           className="mt-2 text-sm"
                         >
@@ -222,7 +224,7 @@ export const PendingPayments: React.FC<PendingPaymentsProps> = ({ invoices, onSa
             </tbody>
           </table>
         </div>
-        
+
         {/* Pagination */}
         <div className="mt-6">
           <Pagination
@@ -235,6 +237,6 @@ export const PendingPayments: React.FC<PendingPaymentsProps> = ({ invoices, onSa
           />
         </div>
       </Card>
-    </div>
+    </PageContainer >
   );
 };

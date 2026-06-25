@@ -39,10 +39,16 @@ export const updateTruckHiringNote = async (id: string, note: Partial<Omit<Truck
         },
         body: JSON.stringify(note),
     });
+
     if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Service - Error response:', errorText);
         throw new Error('Failed to update Truck Hiring Note');
     }
-    return response.json();
+
+    const result = await response.json();
+
+    return result;
 };
 
 export const deleteTruckHiringNote = async (id: string): Promise<void> => {

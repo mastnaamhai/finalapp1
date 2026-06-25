@@ -68,7 +68,7 @@ const convertToJSON = (data: object[], options?: { format?: 'standard' | 'gst' |
         // Enhanced JSON structure for GST/Tax filing
         const enhancedData = data.map(item => {
             const enhancedItem: any = { ...item };
-            
+
             // Add GST-specific fields if they exist
             if ('gstType' in item) {
                 enhancedItem.gstDetails = {
@@ -83,7 +83,7 @@ const convertToJSON = (data: object[], options?: { format?: 'standard' | 'gst' |
                     isManualGst: (item as any).isManualGst || false
                 };
             }
-            
+
             // Add financial summary
             if ('totalAmount' in item || 'amount' in item) {
                 enhancedItem.financialSummary = {
@@ -92,7 +92,7 @@ const convertToJSON = (data: object[], options?: { format?: 'standard' | 'gst' |
                     status: (item as any).status || 'Unknown'
                 };
             }
-            
+
             // Add customer details if available
             if ('customer' in item && (item as any).customer) {
                 enhancedItem.customerDetails = {
@@ -102,17 +102,17 @@ const convertToJSON = (data: object[], options?: { format?: 'standard' | 'gst' |
                     address: (item as any).customer.address
                 };
             }
-            
+
             // Add export metadata
             enhancedItem.exportMetadata = {
                 exportedAt: new Date().toISOString(),
                 exportType: options.format,
                 version: '1.0'
             };
-            
+
             return enhancedItem;
         });
-        
+
         const exportStructure = {
             exportInfo: {
                 generatedAt: new Date().toISOString(),
@@ -133,10 +133,10 @@ const convertToJSON = (data: object[], options?: { format?: 'standard' | 'gst' |
                 }
             }
         };
-        
+
         return JSON.stringify(exportStructure, null, 2);
     }
-    
+
     // Standard JSON format
     return JSON.stringify(data, null, 2);
 };
@@ -170,19 +170,23 @@ const convertToGSTR1XML = (data: object[]): string => {
     const xmlHeader = '<?xml version="1.0" encoding="UTF-8"?>';
     const gstHeader = '<GSTReturn xmlns="urn:gst:gstreturn:1.0">';
     const gstFooter = '</GSTReturn>';
-    
+
     // This is a simplified GSTR-1 structure - in production, you'd need the exact GST schema
     const b2bSection = data.map(item => {
         const inv = item as any;
+        const gstin = inv.customer?.gstin || inv.customerGstin || '';
+        const customerName = inv.customer?.name || inv.customerName || '';
+
         return `
         <B2B>
-            <ctin>${inv.customer?.gstin || ''}</ctin>
-            <cname>${inv.customer?.name || ''}</cname>
+            <ctin>${gstin}</ctin>
+            <gstin>${gstin}</gstin>
+            <cname>${customerName}</cname>
             <inv>
                 <inum>${inv.invoiceNumber || ''}</inum>
                 <idt>${inv.date || ''}</idt>
                 <val>${inv.grandTotal || 0}</val>
-                <pos>${inv.customer?.state || ''}</pos>
+                <pos>${inv.customer?.state || inv.placeOfSupply || ''}</pos>
                 <rchrg>N</rchrg>
                 <inv_typ>R</inv_typ>
                 <itms>
@@ -207,13 +211,13 @@ const convertToGSTR3BXML = (data: object[]): string => {
     const xmlHeader = '<?xml version="1.0" encoding="UTF-8"?>';
     const gstHeader = '<GSTReturn xmlns="urn:gst:gstreturn:1.0">';
     const gstFooter = '</GSTReturn>';
-    
+
     // Calculate totals
     const totalTaxableValue = data.reduce((sum, item) => sum + ((item as any).totalAmount || 0), 0);
     const totalCGST = data.reduce((sum, item) => sum + ((item as any).cgstAmount || 0), 0);
     const totalSGST = data.reduce((sum, item) => sum + ((item as any).sgstAmount || 0), 0);
     const totalIGST = data.reduce((sum, item) => sum + ((item as any).igstAmount || 0), 0);
-    
+
     // This is a simplified GSTR-3B structure
     const gstr3bContent = `
     <GSTR3B>
@@ -222,7 +226,7 @@ const convertToGSTR3BXML = (data: object[]): string => {
                 <ty>G</ty>
                 <typ>B2B</typ>
                 <txval>${totalTaxableValue}</txval>
-                <iamt>${totalCGST + totalSGST}</iamt>
+                <iamt>${totalIGST || (totalCGST + totalSGST)}</iamt>
                 <camt>${totalCGST}</camt>
                 <samt>${totalSGST}</samt>
                 <csamt>0</csamt>
@@ -238,13 +242,22 @@ const convertToStandardXML = (data: object[]): string => {
     const xmlHeader = '<?xml version="1.0" encoding="UTF-8"?>';
     const rootStart = '<data>';
     const rootEnd = '</data>';
-    
+
     const items = data.map((item, index) => {
-        const itemXml = Object.entries(item).map(([key, value]) => {
+        const itemXml = Object.entries(item).flatMap(([key, value]) => {
             const cleanKey = key.replace(/[^a-zA-Z0-9_]/g, '_');
-            return `    <${cleanKey}>${value}</${cleanKey}>`;
+
+            // Handle objects (like customer) by flattening them
+            if (typeof value === 'object' && value !== null) {
+                return Object.entries(value).map(([subKey, subValue]) => {
+                    const cleanSubKey = `${cleanKey}_${subKey.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+                    return `    <${cleanSubKey}>${subValue}</${cleanSubKey}>`;
+                });
+            }
+
+            return [`    <${cleanKey}>${value}</${cleanKey}>`];
         }).join('\n');
-        
+
         return `  <item id="${index}">\n${itemXml}\n  </item>`;
     }).join('\n');
 
@@ -269,15 +282,15 @@ const createZip = async (files: { name: string; content: Blob }[]): Promise<Blob
 };
 
 // File Download Utility
-const downloadFile = (blob: Blob, filename: string, mimeType: string): void => {
-        const url = URL.createObjectURL(blob);
+const downloadFile = (blob: Blob, filename: string): void => {
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
 };
 
@@ -286,8 +299,8 @@ export type ProgressCallback = (progress: ExportProgress) => void;
 
 // Enhanced Export Function
 export const exportData = async (
-    data: object[], 
-    options: ExportOptions, 
+    data: object[],
+    options: ExportOptions,
     onProgress?: ProgressCallback
 ): Promise<void> => {
     if (!data || data.length === 0) {
@@ -305,7 +318,7 @@ export const exportData = async (
         let filteredData = data;
         if (options.filters) {
             filteredData = data.filter(item => {
-                return Object.entries(options.filters).every(([key, value]) => {
+                return Object.entries(options.filters || {}).every(([key, value]) => {
                     if (value === null || value === undefined) return true;
                     return (item as any)[key] === value;
                 });
@@ -338,21 +351,18 @@ export const exportData = async (
         });
 
         let blob: Blob;
-        let mimeType: string;
         let extension: string;
 
         switch (options.format) {
             case 'csv':
                 const csvString = convertToCSV(filteredData);
                 blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-                mimeType = 'text/csv';
                 extension = 'csv';
                 break;
 
             case 'json':
                 const jsonString = convertToJSON(filteredData, { format: options.jsonFormat || 'standard' });
                 blob = new Blob([jsonString], { type: 'application/json' });
-                mimeType = 'application/json';
                 extension = 'json';
                 break;
 
@@ -363,7 +373,6 @@ export const exportData = async (
                     message: 'Generating Excel file...'
                 });
                 blob = await convertToExcel(filteredData);
-                mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
                 extension = 'xlsx';
                 break;
 
@@ -379,7 +388,6 @@ export const exportData = async (
                 });
                 const xmlString = convertToXML(filteredData, { format: options.xmlFormat || 'standard' });
                 blob = new Blob([xmlString], { type: 'application/xml;charset=utf-8;' });
-                mimeType = 'application/xml';
                 extension = 'xml';
                 break;
 
@@ -394,7 +402,6 @@ export const exportData = async (
                     content: new Blob([convertToCSV(filteredData)], { type: 'text/csv' })
                 }];
                 blob = await createZip(files);
-                mimeType = 'application/zip';
                 extension = 'zip';
                 break;
 
@@ -409,7 +416,7 @@ export const exportData = async (
         });
 
         const finalFilename = `${options.filename}.${extension}`;
-        downloadFile(blob, finalFilename, mimeType);
+        downloadFile(blob, finalFilename);
 
     } catch (error) {
         onProgress?.({
@@ -440,11 +447,11 @@ export const exportBulkData = async (
     onProgress?: ProgressCallback
 ): Promise<void> => {
     const files: { name: string; content: Blob }[] = [];
-    
+
     for (let i = 0; i < dataSets.length; i++) {
         const dataSet = dataSets[i];
         const options = { ...masterOptions, ...dataSet.options };
-        
+
         onProgress?.({
             stage: 'processing',
             progress: (i / dataSets.length) * 80,
@@ -479,7 +486,7 @@ export const exportBulkData = async (
     });
 
     const zipBlob = await createZip(files);
-    downloadFile(zipBlob, `${masterOptions.filename}.zip`, 'application/zip');
+    downloadFile(zipBlob, `${masterOptions.filename}.zip`);
 
     onProgress?.({
         stage: 'completed',
@@ -552,7 +559,7 @@ export const getExportTemplates = (): ExportTemplate[] => [
 // Data Validation
 export const validateExportData = (data: object[]): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
-    
+
     if (!data || data.length === 0) {
         errors.push('No data to export');
         return { isValid: false, errors };
@@ -562,7 +569,7 @@ export const validateExportData = (data: object[]): { isValid: boolean; errors: 
     const requiredFields = ['date', '_id'];
     const sampleItem = data[0];
     const missingFields = requiredFields.filter(field => !(field in sampleItem));
-    
+
     if (missingFields.length > 0) {
         errors.push(`Missing required fields: ${missingFields.join(', ')}`);
     }
@@ -572,7 +579,7 @@ export const validateExportData = (data: object[]): { isValid: boolean; errors: 
         const date = (item as any).date;
         return date && isNaN(new Date(date).getTime());
     });
-    
+
     if (dateFields.length > 0) {
         errors.push(`${dateFields.length} records have invalid dates`);
     }

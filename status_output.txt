@@ -1,0 +1,80 @@
+On branch fix-ledger-and-naming-v2-13592584878999150388
+Your branch is up to date with 'origin/fix-ledger-and-naming-v2-13592584878999150388'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   backend/src/controllers/paymentController.ts
+	modified:   backend/src/models/customer.ts
+	modified:   backend/src/models/invoice.ts
+	modified:   backend/src/models/numbering.ts
+	modified:   backend/src/models/payment.ts
+	modified:   backend/src/routes/customerRoutes.ts
+	modified:   backend/src/routes/paymentRoutes.ts
+	modified:   backend/src/types.ts
+	modified:   backend/src/utils/invoiceUtils.ts
+	modified:   backend/src/utils/validation.ts
+	modified:   components/AppLayout.tsx
+	modified:   components/Clients.tsx
+	modified:   components/Dashboard.tsx
+	modified:   components/EnhancedLedger.tsx
+	modified:   components/InvoiceForm.tsx
+	modified:   components/InvoicePDF.tsx
+	modified:   components/Invoices.tsx
+	modified:   components/Ledger.tsx
+	modified:   components/LorryReceiptForm.tsx
+	modified:   components/LorryReceipts.tsx
+	modified:   components/Navigation.tsx
+	modified:   components/PendingPayments.tsx
+	modified:   components/SimpleLedger.tsx
+	modified:   components/TransactionHistory.tsx
+	modified:   components/TruckHiringNotes.tsx
+	modified:   components/UniversalPaymentForm.tsx
+	modified:   components/UniversalPaymentHistoryModal.tsx
+	modified:   components/route-wrappers/ClientsWrapper.tsx
+	modified:   components/route-wrappers/DashboardWrapper.tsx
+	modified:   components/route-wrappers/InvoicePDFWrapper.tsx
+	modified:   components/route-wrappers/LorryReceiptsWrapper.tsx
+	modified:   components/ui/Card.tsx
+	modified:   components/ui/GlobalStyles.tsx
+	modified:   hooks/useAppData.ts
+	modified:   package-lock.json
+	modified:   package.json
+	modified:   routes.tsx
+	modified:   services/invoiceService.ts
+	modified:   services/ledgerService.ts
+	modified:   services/utils.ts
+	modified:   types.ts
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	backend/all_data_dump.txt
+	backend/debug_bag_industries.js
+	backend/debug_bag_industries.ts
+	backend/deep_debug_bag.js
+	backend/final_debug.js
+	backend/find_all_bags.js
+	backend/find_bag_data.js
+	backend/find_large_invoices.js
+	backend/list_all.js
+	backend/src/controllers/paymentAllocationController.ts
+	backend/src/services/
+	components/ClientAccountModal.tsx
+	components/ClientFormModal.tsx
+	components/payment-allocation/
+	components/reports/
+	components/route-wrappers/ReportsWrapper.tsx
+	components/ui/PageContainer.tsx
+	components/ui/PageHeader.tsx
+	components/ui/Table.tsx
+	components/ui/Tabs.tsx
+	lib/
+	pages/
+	services/paymentAllocationService.ts
+	services/reportService.ts
+	services/tdsService.ts
+	status_output.txt
+	types/broker.ts
+	types/paymentAllocation.ts
+
+no changes added to commit (use "git add" and/or "git commit -a")

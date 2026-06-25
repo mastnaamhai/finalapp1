@@ -14,7 +14,11 @@ export const DashboardWrapper = () => {
         // Convert old view format to new route format
         switch (view.name) {
           case 'LORRY_RECEIPTS':
-            context.navigate('/lorry-receipts');
+            if (view.search) {
+              context.navigate(`/lorry-receipts?${view.search}`);
+            } else {
+              context.navigate('/lorry-receipts');
+            }
             break;
           case 'INVOICES':
             context.navigate('/invoices');

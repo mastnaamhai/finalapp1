@@ -8,9 +8,10 @@ import { Button } from './ui/Button';
 import { LorryReceiptView } from './LorryReceiptPDF';
 import { API_BASE_URL } from '../constants';
 import { Pagination } from './ui/Pagination';
-import { StatusBadge, getStatusVariant } from './ui/StatusBadge';
-import { UniversalSearchSort, SortOption } from './ui/UniversalSearchSort';
 
+import { UniversalSearchSort, SortOption } from './ui/UniversalSearchSort';
+import { PageContainer } from './ui/PageContainer';
+import { PageHeader } from './ui/PageHeader';
 
 interface LorryReceiptsProps {
   lorryReceipts: LorryReceipt[];
@@ -25,10 +26,10 @@ interface LorryReceiptsProps {
 }
 
 interface LorryReceiptsTableFilters {
-    searchTerm: string;
-    sortBy: string;
-    sortOrder: 'asc' | 'desc';
-    ids?: string[];
+  searchTerm: string;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
+  ids?: string[];
 }
 
 const statusColors: { [key in LorryReceiptStatus]: string } = {
@@ -60,7 +61,7 @@ const PreviewModal: React.FC<{
   const closeModal = () => {
     setIsClosing(true);
     setTimeout(() => {
-        onClose();
+      onClose();
     }, 300); // Match animation duration
   };
 
@@ -90,14 +91,14 @@ const PreviewModal: React.FC<{
           </button>
         </div>
         <div className="overflow-y-auto bg-gray-200 flex-1">
-           <div className="p-2 sm:p-4 md:p-8 flex justify-center">
-             {item.type === 'LR' && item.data.consignor && ( // Ensure data is populated
+          <div className="p-2 sm:p-4 md:p-8 flex justify-center">
+            {item.type === 'LR' && item.data.consignor && ( // Ensure data is populated
               <LorryReceiptView
                 lorryReceipt={item.data as LorryReceipt}
                 companyInfo={companyInfo}
               />
             )}
-           </div>
+          </div>
         </div>
       </div>
     </div>
@@ -109,8 +110,8 @@ export const LorryReceipts: React.FC<LorryReceiptsProps> = ({ lorryReceipts, inv
   const [searchTerm, setSearchTerm] = useState(initialFilters?.searchTerm || '');
   const [sortBy, setSortBy] = useState(initialFilters?.sortBy || 'lrNumber');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(initialFilters?.sortOrder || 'desc');
-  const [previewItem, setPreviewItem] = useState<{type: 'LR', data: LorryReceipt} | null>(null);
-  
+  const [previewItem, setPreviewItem] = useState<{ type: 'LR', data: LorryReceipt } | null>(null);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -130,7 +131,7 @@ export const LorryReceipts: React.FC<LorryReceiptsProps> = ({ lorryReceipts, inv
   const filteredLrs = useMemo(() => {
     // Create a set of LR IDs that are included in invoices (billed LRs)
     const invoicedLrIds = new Set(invoices.flatMap(inv => inv.lorryReceipts?.map(lr => lr._id) || []));
-    
+
     let filtered = lorryReceipts.filter(lr => {
       const consignorName = lr.consignor?.name || '';
       const consigneeName = lr.consignee?.name || '';
@@ -145,7 +146,7 @@ export const LorryReceipts: React.FC<LorryReceiptsProps> = ({ lorryReceipts, inv
         consignorName.toLowerCase().includes(searchLower) ||
         consigneeName.toLowerCase().includes(searchLower) ||
         lr.status.toLowerCase().includes(searchLower);
-      
+
       const matchesId = !initialFilters?.ids || initialFilters.ids.includes(lr._id);
 
       return matchesSearch && matchesId;
@@ -155,7 +156,7 @@ export const LorryReceipts: React.FC<LorryReceiptsProps> = ({ lorryReceipts, inv
     filtered.sort((a, b) => {
       let aValue: any = '';
       let bValue: any = '';
-      
+
       switch (sortBy) {
         case 'lrNumber':
           aValue = a.lrNumber;
@@ -193,7 +194,7 @@ export const LorryReceipts: React.FC<LorryReceiptsProps> = ({ lorryReceipts, inv
           aValue = a.lrNumber;
           bValue = b.lrNumber;
       }
-      
+
       if (sortOrder === 'asc') {
         return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
       } else {
@@ -223,24 +224,27 @@ export const LorryReceipts: React.FC<LorryReceiptsProps> = ({ lorryReceipts, inv
   };
 
   return (
-    <div className="space-y-8">
-
-       {previewItem && (
+    <PageContainer>
+      {previewItem && (
         <PreviewModal
           item={previewItem}
           onClose={() => setPreviewItem(null)}
           companyInfo={companyInfo}
         />
       )}
+
+      <PageHeader
+        title="Lorry Receipts"
+        subtitle="Manage and track your lorry receipts"
+        actions={
+          <div className="flex gap-2">
+            <Button onClick={() => onViewChange({ name: 'CREATE_LR' })}>Create New</Button>
+            <Button onClick={onBack} variant="secondary">Back</Button>
+          </div>
+        }
+      />
+
       <Card>
-        <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Lorry Receipts</h2>
-            <div className="space-x-2">
-              <Button onClick={() => onViewChange({ name: 'CREATE_LR' })}>Create New Lorry Receipt</Button>
-              <Button onClick={onBack} variant="secondary">Back to Dashboard</Button>
-            </div>
-        </div>
-        
         <UniversalSearchSort
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -283,20 +287,21 @@ export const LorryReceipts: React.FC<LorryReceiptsProps> = ({ lorryReceipts, inv
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{lr.from} to {lr.to}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">₹{(lr.totalAmount || 0).toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <select
-                      value={lr.status}
-                      onClick={e => e.stopPropagation()}
-                      onChange={(e) => onUpdateLrStatus(lr._id, e.target.value as LorryReceiptStatus)}
-                      className={`px-2 py-1 text-xs leading-5 font-semibold rounded-full ${statusColors[lr.status]} border-0 bg-opacity-80 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 focus:outline-none`}
-                    >
-                      {Object.values(LorryReceiptStatus).map(status => (
-                        <option key={status} value={status}>{status}</option>
-                      ))}
-                    </select>
+                    <div onClick={e => e.stopPropagation()}>
+                      <select
+                        value={lr.status}
+                        onChange={(e) => onUpdateLrStatus(lr._id, e.target.value as LorryReceiptStatus)}
+                        className={`px-2 py-1 text-xs leading-5 font-semibold rounded-full ${statusColors[lr.status]} border-0 bg-opacity-80 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 focus:outline-none cursor-pointer`}
+                      >
+                        {Object.values(LorryReceiptStatus).map(status => (
+                          <option key={status} value={status}>{status}</option>
+                        ))}
+                      </select>
+                    </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium space-x-2">
                     {[LorryReceiptStatus.CREATED, LorryReceiptStatus.IN_TRANSIT, LorryReceiptStatus.DELIVERED].includes(lr.status) && (
-                        <button onClick={(e) => { e.stopPropagation(); onViewChange({ name: 'CREATE_INVOICE_FROM_LR', lrId: lr._id }); }} className="text-blue-600 hover:text-blue-900 transition-colors">Create Invoice</button>
+                      <button onClick={(e) => { e.stopPropagation(); onViewChange({ name: 'CREATE_INVOICE_FROM_LR', lrId: lr._id }); }} className="text-blue-600 hover:text-blue-900 transition-colors">Create Invoice</button>
                     )}
                     <button onClick={(e) => { e.stopPropagation(); onViewChange({ name: 'VIEW_LR', id: lr._id }); }} className="text-indigo-600 hover:text-indigo-900 transition-colors">View PDF</button>
                     <button onClick={(e) => { e.stopPropagation(); onViewChange({ name: 'EDIT_LR', id: lr._id }); }} className="text-green-600 hover:text-green-900 transition-colors">Edit</button>
@@ -307,7 +312,7 @@ export const LorryReceipts: React.FC<LorryReceiptsProps> = ({ lorryReceipts, inv
             </tbody>
           </table>
         </div>
-        
+
         {/* Pagination */}
         <div className="mt-6">
           <Pagination
@@ -320,6 +325,6 @@ export const LorryReceipts: React.FC<LorryReceiptsProps> = ({ lorryReceipts, inv
           />
         </div>
       </Card>
-    </div>
+    </PageContainer>
   );
 };
